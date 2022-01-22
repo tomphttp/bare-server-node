@@ -9,9 +9,6 @@ export class Server {
 
 		this.prefix = config.prefix;
 	}
-	upgrade(req, socket, head){
-		socket.end();
-	}
 	send_json(response, status, json){
 		const send = Buffer.from(JSON.stringify(json));
 		response.writeHead(status, { 
@@ -30,6 +27,18 @@ export class Server {
 		}else{
 			return false;
 		}
+	}
+	route_upgrade(request, socket, head){
+		if(request.url.startsWith(this.prefix)){
+			this.upgrade(request, response);
+			return true;
+		}else{
+			return false;
+		}
+	}
+	upgrade(request, socket, head){
+		console.log(request.headers);
+		socket.end();
 	}
 	async request(request, response){
 		let finished = false;
