@@ -62,17 +62,20 @@ export async function SendBare(server, server_request, server_response){
 	}
 
 	const search = new URLSearchParams(server_request.url.slice(server_request.url.indexOf('?')));
-	
-	try{
-		var url = JSON.parse(search.get('url'));
-	}catch(err){
-		return void server.send_json(server_response, 400, { message: messages['error.badbody'] });
-	}
+	const url = {
+		host: server_request.headers['x-tomp-host'],
+		path: server_request.headers['x-tomp-path'],
+		port: parseInt(server_request.headers['x-tomp-port']),
+		protocol: server_request.headers['x-tomp-protocol'],
+	};
 
-	if(!url)return void server.send_json(server_response, 400, { message: messages['error.nourlquery'] });
-	
-	// todo: do same procedure chrome does for capitalizing headers for http/1.0 - http/1.1 servers
-	// wont recover all capitalization eg headers set by XMLHttpRequest
+	for(let prop in url){
+		if(url[prop] == undefined || url[prop] == NaN){
+			return void server.send_json(server_response, 400, {
+				message: `One or more URL fields was invalid.`
+			});
+		}
+	}
 
 	try{
 		var response = await Fetch(server_request, request_headers, url);
@@ -82,13 +85,17 @@ export async function SendBare(server, server_request, server_response){
 	}
 
 	for(let header in response.headers){
-		if(header == 'content-encoding' || header == 'x-content-encoding')response_headers['content-encoding'] = response.headers[header];
-		else if(header == 'content-length')response_headers['content-length'] = response.headers[header];
+		if(header == 'content-encoding' || header == 'x-content-encoding'){
+			response_headers['content-encoding'] = response.headers[header];
+		}else if(header == 'content-length'){
+			response_headers['content-length'] = response.headers[header];
+		}
 	}
 
 	response_headers['x-tomp-headers'] = JSON.stringify(MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), {...response.headers}));
 	response_headers['x-tomp-status'] = response.statusCode
 	response_headers['x-tomp-status-text'] = response.statusMessage;
+
 	server_response.writeHead(200, response_headers);
 	response.pipe(server_response);
 }
