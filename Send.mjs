@@ -104,7 +104,7 @@ export async function SendBare(server, server_request, server_response){
 export async function SendSocket(server, server_request, server_socket, server_head){
 	if(!server_request.headers['sec-websocket-protocol'])socket.end();
 	const protocols = server_request.headers['sec-websocket-protocol'].split(', ');
-	let [request_headers,protocol,host,port,path] = protocols.splice(0, 4).map(decode_protocol);
+	let [request_headers,protocol,host,port,path] = protocols.splice(0, 5).map(decode_protocol);
 	
 	port = parseInt(port);
 	request_headers = Object.setPrototypeOf(JSON.parse(request_headers), null);
@@ -118,9 +118,7 @@ export async function SendSocket(server, server_request, server_socket, server_h
 	if(protocols.length){
 		request_headers['sec-websocket-protocol'] = protocols.join(', ');
 	}
-
-	console.log(request_headers);
-
+	
 	const options = {
 		host,
 		port,
@@ -128,7 +126,7 @@ export async function SendSocket(server, server_request, server_socket, server_h
 		headers: MapHeaderNamesFromArray(RawHeaderNames(server_request.rawHeaders), {...request_headers}),
 		method: server_request.method,	
 	};
-
+	
 	let request_stream;
 	
 	let response_promise = new Promise((resolve, reject) => {
@@ -139,20 +137,18 @@ export async function SendSocket(server, server_request, server_socket, server_h
 			
 			request_stream.on('upgrade', (...args) => resolve(args))
 			request_stream.on('error', reject);
+			request_stream.write(server_head);
+			request_stream.end();
 		}catch(err){
 			reject(err);
 		}
 	});
 
-	request_stream.write(server_head);
-	request_stream.end();
-
 	const [ response, socket, remote_head ] = await response_promise;
-
-	let handshake = 'HTTP/1.1 101 Web Socket Protocol Handshake\r\n';
+	let handshake = `HTTP/1.1 ${response.statusCode} ${response.statusMessage}\r\n`;
 	for (let header in response.headers) {
 		handshake += `${header}: ${response.headers[header]}\r\n`;
-	};
+	}
 	handshake += '\r\n';
 	server_socket.write(handshake);
 	server_socket.write(remote_head);

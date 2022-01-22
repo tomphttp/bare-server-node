@@ -14,7 +14,7 @@ export function RawHeaderNames(raw){
 	const result = [];
 
 	for(let i = 0; i < raw.length; i += 2){
-		if(result.includes(i))result.push(raw[i]);
+		if(!result.includes(i))result.push(raw[i]);
 	}
 
 	return result;
