@@ -37,7 +37,12 @@ export class Server {
 		}
 	}
 	upgrade(request, socket, head){
-		SendSocket(this, request, socket, head);
+		try{
+			SendSocket(this, request, socket, head);
+		}catch(err){
+			console.error(err);
+			socket.end();
+		}
 	}
 	async request(request, response){
 		let finished = false;

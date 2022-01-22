@@ -16,9 +16,9 @@ export async function Fetch(server_request, request_headers, url){
 		headers: request_headers,
 	};
 	
-	var request_stream;
+	let request_stream;
 	
-	var response_promise = new Promise((resolve, reject) => {
+	let response_promise = new Promise((resolve, reject) => {
 		try{
 			if(url.protocol == 'https:')request_stream = https.request(options, resolve);
 			else if(url.protocol == 'http:')request_stream = http.request(options, resolve);
@@ -101,12 +101,56 @@ export async function SendBare(server, server_request, server_response){
 	response.pipe(server_response);
 }
 
-export function SendSocket(server, request, socket, head){
-	if(!request.headers['sec-websocket-protocol'])socket.end();
-	const protocols = request.headers['sec-websocket-protocol'].split(', ');
-	const [protocol,host,port,path] = protocols.splice(0, 4).map(decode_protocol);
-
-	console.log(protocol, host, port, path);
-
+export async function SendSocket(server, server_request, server_socket, server_head){
+	if(!server_request.headers['sec-websocket-protocol'])socket.end();
+	const protocols = server_request.headers['sec-websocket-protocol'].split(', ');
+	let [protocol,host,port,path] = protocols.splice(0, 4).map(decode_protocol);
 	
+	port = parseInt(port);
+
+	const request_headers = {...server_request.headers};
+
+	request_headers['host'] = host;
+
+	const options = {
+		host,
+		port,
+		path,
+		headers: MapHeaderNamesFromArray(RawHeaderNames(server_request.rawHeaders), {...request_headers}),
+		method: server_request.method,	
+	};
+
+	let request_stream;
+	
+	let response_promise = new Promise((resolve, reject) => {
+		try{
+			if(protocol == 'wss:')request_stream = https.request(options);
+			else if(protocol == 'ws:')request_stream = http.request(options);
+			else return reject(new RangeError(`Unsupported protocol: '${protocol}'`));
+			
+			request_stream.on('upgrade', (...args) => resolve(args))
+			request_stream.on('error', reject);
+		}catch(err){
+			reject(err);
+		}
+	});
+
+	request_stream.write(server_head);
+	request_stream.end();
+
+	const [ response, socket, remote_head ] = await response_promise;
+
+	let handshake = 'HTTP/1.1 101 Web Socket Protocol Handshake\r\n';
+	for (let header in response.headers) {
+		handshake += `${header}: ${response.headers[header]}\r\n`;
+	};
+	handshake += '\r\n';
+	server_socket.write(handshake);
+	server_socket.write(remote_head);
+	socket.on('close', () => server_socket.end());
+	server_socket.on('close', () => socket.end());
+	socket.on('error', () => server_socket.end());
+	server_socket.on('error', () => socket.end());
+	socket.pipe(server_socket);
+	server_socket.pipe(socket);
 }
