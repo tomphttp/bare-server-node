@@ -1,4 +1,4 @@
-import { SendBare } from './Send.mjs';
+import { SendSocket, SendBare } from './Send.mjs';
 
 export class Server {
 	prefix = '';
@@ -30,15 +30,14 @@ export class Server {
 	}
 	route_upgrade(request, socket, head){
 		if(request.url.startsWith(this.prefix)){
-			this.upgrade(request, response);
+			this.upgrade(request, socket, head);
 			return true;
 		}else{
 			return false;
 		}
 	}
 	upgrade(request, socket, head){
-		console.log(request.headers);
-		socket.end();
+		SendSocket(this, request, socket, head);
 	}
 	async request(request, response){
 		let finished = false;

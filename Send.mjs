@@ -1,6 +1,7 @@
 import http from 'http';
 import https from 'https';
 import { MapHeaderNamesFromArray, RawHeaderNames } from './HeaderUtil.mjs';
+import { decode_protocol } from './EncodeProtocol.mjs';
 
 // max of 4 concurrent sockets, rest is queued while busy? set max to 75
 // const http_agent = http.Agent();
@@ -98,4 +99,14 @@ export async function SendBare(server, server_request, server_response){
 
 	server_response.writeHead(200, response_headers);
 	response.pipe(server_response);
+}
+
+export function SendSocket(server, request, socket, head){
+	if(!request.headers['sec-websocket-protocol'])socket.end();
+	const protocols = request.headers['sec-websocket-protocol'].split(', ');
+	const [protocol,host,port,path] = protocols.splice(0, 4).map(decode_protocol);
+
+	console.log(protocol, host, port, path);
+
+	
 }
