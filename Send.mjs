@@ -1,4 +1,4 @@
-import http from 'http';
+import http, { request } from 'http';
 import https from 'https';
 import { MapHeaderNamesFromArray, RawHeaderNames } from './HeaderUtil.mjs';
 import { decode_protocol } from './EncodeProtocol.mjs';
@@ -104,13 +104,22 @@ export async function SendBare(server, server_request, server_response){
 export async function SendSocket(server, server_request, server_socket, server_head){
 	if(!server_request.headers['sec-websocket-protocol'])socket.end();
 	const protocols = server_request.headers['sec-websocket-protocol'].split(', ');
-	let [protocol,host,port,path] = protocols.splice(0, 4).map(decode_protocol);
+	let [request_headers,protocol,host,port,path] = protocols.splice(0, 4).map(decode_protocol);
 	
 	port = parseInt(port);
+	request_headers = Object.setPrototypeOf(JSON.parse(request_headers), null);
+		
+	for(let header in server_request.headers){
+		if(header.startsWith('accept') || header.startsWith('sec-websocket-') && header != 'sec-websocket-protocol'){
+			request_headers[header] = server_request.headers[header];
+		}
+	}
 
-	const request_headers = {...server_request.headers};
+	if(protocols.length){
+		request_headers['sec-websocket-protocol'] = protocols.join(', ');
+	}
 
-	request_headers['host'] = host;
+	console.log(request_headers);
 
 	const options = {
 		host,
