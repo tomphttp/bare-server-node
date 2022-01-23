@@ -1,5 +1,5 @@
 import { Server as HTTPServer } from 'node:http';
-import { Server as BareServer } from '../bare-server-node/Server.mjs';
+import { Server as BareServer } from './Server.mjs';
 
 const bare_server = new BareServer({
 	prefix: '/bare/',
