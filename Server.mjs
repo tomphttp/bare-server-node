@@ -36,9 +36,9 @@ export class Server {
 			return false;
 		}
 	}
-	upgrade(request, socket, head){
+	async upgrade(request, socket, head){
 		try{
-			SendSocket(this, request, socket, head);
+			await SendSocket(this, request, socket, head);
 		}catch(err){
 			console.error(err);
 			socket.end();

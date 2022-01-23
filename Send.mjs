@@ -103,7 +103,8 @@ export async function SendBare(server, server_request, server_response){
 
 export async function SendSocket(server, server_request, server_socket, server_head){
 	if(!server_request.headers['sec-websocket-protocol'])socket.end();
-	const protocols = server_request.headers['sec-websocket-protocol'].split(', ');
+	const protocols = server_request.headers['sec-websocket-protocol'].split(/,\s*/g);
+	const a_protocol = protocols[0]; // for sec-websocket-protocol in response IF the remote hasnt specified a protocol
 	let [request_headers,protocol,host,port,path] = protocols.splice(0, 5).map(decode_protocol);
 	
 	port = parseInt(port);
@@ -123,7 +124,7 @@ export async function SendSocket(server, server_request, server_socket, server_h
 		host,
 		port,
 		path,
-		headers: MapHeaderNamesFromArray(RawHeaderNames(server_request.rawHeaders), {...request_headers}),
+		headers: MapHeaderNamesFromArray(RawHeaderNames(server_request.rawHeaders), Object.setPrototypeOf({...request_headers}, null)),
 		method: server_request.method,	
 	};
 	
@@ -131,8 +132,8 @@ export async function SendSocket(server, server_request, server_socket, server_h
 	
 	let response_promise = new Promise((resolve, reject) => {
 		try{
-			if(protocol == 'wss:')request_stream = https.request(options);
-			else if(protocol == 'ws:')request_stream = http.request(options);
+			if(protocol == 'wss:')request_stream = https.request(options, res => reject(`Remote didn't upgrade the request`));
+			else if(protocol == 'ws:')request_stream = http.request(options, res => reject(`Remote didn't upgrade the request`));
 			else return reject(new RangeError(`Unsupported protocol: '${protocol}'`));
 			
 			request_stream.on('upgrade', (...args) => resolve(args))
@@ -144,18 +145,47 @@ export async function SendSocket(server, server_request, server_socket, server_h
 		}
 	});
 
-	const [ response, socket, remote_head ] = await response_promise;
-	let handshake = `HTTP/1.1 ${response.statusCode} ${response.statusMessage}\r\n`;
-	for (let header in response.headers) {
-		handshake += `${header}: ${response.headers[header]}\r\n`;
+	const [ response, socket, head ] = await response_promise;
+	
+	const response_headers = Object.setPrototypeOf({...response.headers}, null);
+
+	if(!('sec-webSocket-protocol' in response_headers)){
+		response_headers['sec-websocket-protocol'] = a_protocol;
 	}
+
+	const response_headers_mapped = MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), response_headers);
+
+	let handshake = `HTTP/1.1 ${response.statusCode} ${response.statusMessage}\r\n`;
+	
+	for (let header in response_headers_mapped) {
+		handshake += `${header}: ${response_headers_mapped[header]}\r\n`;
+	}
+
 	handshake += '\r\n';
+	
 	server_socket.write(handshake);
-	server_socket.write(remote_head);
-	socket.on('close', () => server_socket.end());
-	server_socket.on('close', () => socket.end());
-	socket.on('error', () => server_socket.end());
-	server_socket.on('error', () => socket.end());
+	server_socket.write(head);
+
+	socket.on('close', () => {
+		console.log('Remote closed');
+		server_socket.end();
+	});
+
+	server_socket.on('close', () => {
+		console.log('Serving closed');
+		socket.end();
+	});
+
+	socket.on('error', err => {
+		console.error('Remote socket error:', err);
+		server_socket.end();
+	});
+	
+	server_socket.on('error', err => {
+		console.error('Serving socket error:', err);
+		socket.end();
+	});
+
 	socket.pipe(server_socket);
 	server_socket.pipe(socket);
 }
