@@ -37,6 +37,8 @@ export async function Fetch(server_request, request_headers, url){
 	return await response_promise;
 }
 
+const forward = ['accept-encoding', 'accept-language'];
+
 export async function SendBare(server, server_request, server_response){
 	const request_headers = Object.setPrototypeOf({}, null);
 	const response_headers = Object.setPrototypeOf({}, null);
@@ -57,11 +59,11 @@ export async function SendBare(server, server_request, server_response){
 	}
 
 	for(let header in server_request.headers){
-		if(header.startsWith('accept')){
+		if(forward.includes(header)){
 			request_headers[header] = server_request.headers[header];
 		}
 	}
-
+	
 	const search = new URLSearchParams(server_request.url.slice(server_request.url.indexOf('?')));
 	const url = {
 		host: server_request.headers['x-tomp-host'],
