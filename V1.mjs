@@ -2,6 +2,7 @@ import http, { request } from 'http';
 import https from 'https';
 import { MapHeaderNamesFromArray, RawHeaderNames } from './HeaderUtil.mjs';
 import { decode_protocol } from './EncodeProtocol.mjs';
+import { Response } from './Response.mjs';
 
 // max of 4 concurrent sockets, rest is queued while busy? set max to 75
 // const http_agent = http.Agent();
@@ -37,8 +38,63 @@ export async function Fetch(server_request, request_headers, url){
 	return await response_promise;
 }
 
-export async function SendBare(server, server_request, server_response){
-	const request_headers = Object.setPrototypeOf({}, null);
+function read_headers(request_headers){
+	const remote = Object.setPrototypeOf({}, null);
+	const headers = Object.setPrototypeOf({}, null);
+	
+	for(let remote_prop of ['host','port','protocol','path']){
+		const header = `x-bare-${remote_prop}`;
+
+		if(header in request_headers){
+			let value = request_headers[header];
+			
+			if(remote_prop == 'port'){
+				value = parseInt(value);
+				if(isNaN(value))return { error: `${header} was not a valid integer.` };
+			}
+
+			remote[remote_prop] = value;
+		}else{
+			return { error: `${header} (remote.${remote_prop} was not specified.` };
+		}
+	}
+	
+	if('x-bare-headers' in request_headers){
+		let json;
+		
+		try{
+			json = JSON.parse(request_headers['x-bare-headers']);
+		}catch(err){
+			return { error: `x-bare-forward-headers contained invalid JSON.` }
+		}
+
+		Object.assign(headers, json);
+	}else{
+		return { error: `x-bare-headers was not specified.` };
+	}
+
+	if('x-bare-forward-headers' in request_headers){
+		let json;
+		
+		try{
+			json = JSON.parse(request_headers['x-bare-forward-headers']);
+		}catch(err){
+			return { error: `x-bare-forward-headers contained invalid JSON.` }
+		}
+
+		for(let header of json){
+			if(header in headers){
+				headers[header] = request_headers[header];
+			}
+		}
+	}else{
+		return { error: `x-bare-forward-headers was not specified.` };
+	}
+
+	return { remote, headers };
+}
+
+export async function v1(server_request){
 	const response_headers = Object.setPrototypeOf({}, null);
 
 	response_headers['x-robots-tag'] = 'noindex';
@@ -46,44 +102,23 @@ export async function SendBare(server, server_request, server_response){
 	response_headers['access-control-allow-origin'] = '*';
 	response_headers['access-control-expose-headers'] = '*';
 	
-	if(server_request.method == 'OPTIONS'){
-		server_response.writeHead(200, response_headers);
-		return void server_response.end();
-	}
-
-	if('x-tomp-headers' in server_request.headers){
-		const json = JSON.parse(server_request.headers['x-tomp-headers']);
-		Object.assign(request_headers, json);
-	}
-
-	if('x-tomp-forward-headers' in server_request.headers){
-		const json = JSON.parse(server_request.headers['x-tomp-forward-headers']);
-		
-		for(let header of json)if(header in server_request.headers){
-			request_headers[header] = server_request.headers[header];
-		}
-	}
+	const { error, remote, headers } = read_headers(server_request.headers);
 	
-	const search = new URLSearchParams(server_request.url.slice(server_request.url.indexOf('?')));
-	const url = {
-		host: server_request.headers['x-tomp-host'],
-		path: server_request.headers['x-tomp-path'],
-		port: parseInt(server_request.headers['x-tomp-port']),
-		protocol: server_request.headers['x-tomp-protocol'],
-	};
-
-	for(let prop in url){
-		if(url[prop] == undefined || url[prop] == NaN){
-			return void server.send_json(server_response, 400, {
-				message: `One or more URL fields was invalid.`
-			});
+	if(error){
+		// sent by browser, not client
+		if(server_request.method == 'OPTIONS'){
+			return new Response(undefined, 200, response_headers);
+		}else{
+			throw new TypeError(error);
 		}
 	}
+
+	let response;
 
 	try{
-		var response = await Fetch(server_request, request_headers, url);
+		response = await Fetch(server_request, headers, remote);
 	}catch(err){
-		console.error(err, url);
+		console.error(err, remote);
 		throw err;
 	}
 
@@ -95,12 +130,11 @@ export async function SendBare(server, server_request, server_response){
 		}
 	}
 
-	response_headers['x-tomp-headers'] = JSON.stringify(MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), {...response.headers}));
-	response_headers['x-tomp-status'] = response.statusCode
-	response_headers['x-tomp-status-text'] = response.statusMessage;
+	response_headers['x-bare-headers'] = JSON.stringify(MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), {...response.headers}));
+	response_headers['x-bare-status'] = response.statusCode
+	response_headers['x-bare-status-text'] = response.statusMessage;
 
-	server_response.writeHead(200, response_headers);
-	response.pipe(server_response);
+	return new Response(response, 200, response_headers);
 }
 
 export async function SendSocket(server, server_request, server_socket, server_head){
