@@ -1,4 +1,4 @@
-import { v1 } from './V1.mjs';
+import { v1, v1socket } from './V1.mjs';
 import { Response } from './Response.mjs';
 
 export class Server {
@@ -51,8 +51,17 @@ export class Server {
 		};
 	}
 	async upgrade(request, socket, head){
+		const service = request.url.slice(this.directory.length - 1);
+		
 		try{
-			await SendSocket(this, request, socket, head);
+			switch(service){
+				case'/v1/':
+					await v1socket(this, request, socket, head);
+					break;
+				default:
+					socket.end();
+					break;
+			}
 		}catch(err){
 			console.error(err);
 			socket.end();

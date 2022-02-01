@@ -137,7 +137,7 @@ export async function v1(server_request){
 	return new Response(response, 200, response_headers);
 }
 
-export async function SendSocket(server, server_request, server_socket, server_head){
+export async function v1socket(server, server_request, server_socket, server_head){
 	if(!server_request.headers['sec-websocket-protocol'])socket.end();
 	const protocols = server_request.headers['sec-websocket-protocol'].split(/,\s*/g);
 	const a_protocol = protocols[0]; // for sec-websocket-protocol in response IF the remote hasnt specified a protocol
