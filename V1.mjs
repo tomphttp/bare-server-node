@@ -162,14 +162,15 @@ export async function v1socket(server, server_request, server_socket, server_hea
 	const {
 		remote,
 		headers,
-		protocol,
 		forward_headers,
 	} = JSON.parse(decode_protocol(data));
 	
 	load_forwarded_headers(server_request, forward_headers, headers);
 
 	const options = {
-		...remote,
+		host: remote.host,
+		port: remote.port,
+		path: remote.path,
 		headers,
 		method: server_request.method,	
 	};
@@ -178,9 +179,9 @@ export async function v1socket(server, server_request, server_socket, server_hea
 	
 	let response_promise = new Promise((resolve, reject) => {
 		try{
-			if(protocol === 'wss:')request_stream = https.request(options, res => reject(`Remote didn't upgrade the request`));
-			else if(protocol === 'ws:')request_stream = http.request(options, res => reject(`Remote didn't upgrade the request`));
-			else return reject(new RangeError(`Unsupported protocol: '${protocol}'`));
+			if(remote.protocol === 'wss:')request_stream = https.request(options, res => reject(`Remote didn't upgrade the request`));
+			else if(remote.protocol === 'ws:')request_stream = http.request(options, res => reject(`Remote didn't upgrade the request`));
+			else return reject(new RangeError(`Unsupported protocol: '${remote.protocol}'`));
 			
 			request_stream.on('upgrade', (...args) => resolve(args))
 			request_stream.on('error', reject);
