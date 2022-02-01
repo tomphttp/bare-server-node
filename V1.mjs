@@ -21,8 +21,8 @@ export async function Fetch(server_request, request_headers, url){
 	
 	let response_promise = new Promise((resolve, reject) => {
 		try{
-			if(url.protocol == 'https:')request_stream = https.request(options, resolve);
-			else if(url.protocol == 'http:')request_stream = http.request(options, resolve);
+			if(url.protocol === 'https:')request_stream = https.request(options, resolve);
+			else if(url.protocol === 'http:')request_stream = http.request(options, resolve);
 			else return reject(new RangeError(`Unsupported protocol: '${url.protocol}'`));
 			
 			request_stream.on('error', reject);
@@ -48,7 +48,7 @@ function read_headers(request_headers){
 		if(header in request_headers){
 			let value = request_headers[header];
 			
-			if(remote_prop == 'port'){
+			if(remote_prop === 'port'){
 				value = parseInt(value);
 				if(isNaN(value))return { error: `${header} was not a valid integer.` };
 			}
@@ -106,7 +106,7 @@ export async function v1(server_request){
 	
 	if(error){
 		// sent by browser, not client
-		if(server_request.method == 'OPTIONS'){
+		if(server_request.method === 'OPTIONS'){
 			return new Response(undefined, 200, response_headers);
 		}else{
 			throw new TypeError(error);
@@ -123,9 +123,9 @@ export async function v1(server_request){
 	}
 
 	for(let header in response.headers){
-		if(header == 'content-encoding' || header == 'x-content-encoding'){
+		if(header === 'content-encoding' || header === 'x-content-encoding'){
 			response_headers['content-encoding'] = response.headers[header];
-		}else if(header == 'content-length'){
+		}else if(header === 'content-length'){
 			response_headers['content-length'] = response.headers[header];
 		}
 	}
@@ -168,8 +168,8 @@ export async function SendSocket(server, server_request, server_socket, server_h
 	
 	let response_promise = new Promise((resolve, reject) => {
 		try{
-			if(protocol == 'wss:')request_stream = https.request(options, res => reject(`Remote didn't upgrade the request`));
-			else if(protocol == 'ws:')request_stream = http.request(options, res => reject(`Remote didn't upgrade the request`));
+			if(protocol === 'wss:')request_stream = https.request(options, res => reject(`Remote didn't upgrade the request`));
+			else if(protocol === 'ws:')request_stream = http.request(options, res => reject(`Remote didn't upgrade the request`));
 			else return reject(new RangeError(`Unsupported protocol: '${protocol}'`));
 			
 			request_stream.on('upgrade', (...args) => resolve(args))
