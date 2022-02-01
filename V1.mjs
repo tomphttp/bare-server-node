@@ -8,7 +8,7 @@ import { Response } from './Response.mjs';
 // const http_agent = http.Agent();
 // const https_agent = https.Agent();
 
-export async function Fetch(server_request, request_headers, url){
+async function Fetch(server_request, request_headers, url){
 	const options = {
 		host: url.host,
 		port: url.port,
@@ -38,7 +38,20 @@ export async function Fetch(server_request, request_headers, url){
 	return await response_promise;
 }
 
-function read_headers(request_headers){
+function load_forwarded_headers(request, forward, target){
+	const raw = RawHeaderNames(request.rawHeaders);
+
+	for(let header of forward){
+		for(let cap of raw){
+			if(cap.toLowerCase() == header){
+				// header exists and real capitalization was found
+				target[cap] = request.headers[header];
+			}
+		}
+	}
+}
+
+function read_headers(server_request, request_headers){
 	const remote = Object.setPrototypeOf({}, null);
 	const headers = Object.setPrototypeOf({}, null);
 	
@@ -82,6 +95,8 @@ function read_headers(request_headers){
 			return { error: `x-bare-forward-headers contained invalid JSON.` }
 		}
 
+		load_forwarded_headers(server_request, json, headers);
+		
 		for(let header of json){
 			if(header in headers){
 				headers[header] = request_headers[header];
@@ -102,7 +117,7 @@ export async function v1(server_request){
 	response_headers['access-control-allow-origin'] = '*';
 	response_headers['access-control-expose-headers'] = '*';
 	
-	const { error, remote, headers } = read_headers(server_request.headers);
+	const { error, remote, headers } = read_headers(server_request, server_request.headers);
 	
 	if(error){
 		// sent by browser, not client
@@ -138,29 +153,24 @@ export async function v1(server_request){
 }
 
 export async function v1socket(server, server_request, server_socket, server_head){
-	if(!server_request.headers['sec-websocket-protocol'])socket.end();
-	const protocols = server_request.headers['sec-websocket-protocol'].split(/,\s*/g);
-	const a_protocol = protocols[0]; // for sec-websocket-protocol in response IF the remote hasnt specified a protocol
-	let [request_headers,protocol,host,port,path] = protocols.splice(0, 5).map(decode_protocol);
-	
-	port = parseInt(port);
-	request_headers = Object.setPrototypeOf(JSON.parse(request_headers), null);
-		
-	for(let header in server_request.headers){
-		if(header.startsWith('accept') || header.startsWith('sec-websocket-') && header != 'sec-websocket-protocol'){
-			request_headers[header] = server_request.headers[header];
-		}
+	if(!server_request.headers['sec-websocket-protocol']){
+		return socket.end();
 	}
 
-	if(protocols.length){
-		request_headers['sec-websocket-protocol'] = protocols.join(', ');
-	}
+	const [ first_protocol, data ] = server_request.headers['sec-websocket-protocol'].split(/,\s*/g);
 	
+	const {
+		remote,
+		headers,
+		protocol,
+		forward_headers,
+	} = JSON.parse(decode_protocol(data));
+	
+	load_forwarded_headers(server_request, forward_headers, headers);
+
 	const options = {
-		host,
-		port,
-		path,
-		headers: MapHeaderNamesFromArray(RawHeaderNames(server_request.rawHeaders), Object.setPrototypeOf({...request_headers}, null)),
+		...remote,
+		headers,
 		method: server_request.method,	
 	};
 	
@@ -183,23 +193,15 @@ export async function v1socket(server, server_request, server_socket, server_hea
 
 	const [ response, socket, head ] = await response_promise;
 	
-	const response_headers = Object.setPrototypeOf({...response.headers}, null);
+	const response_headers = [
+		'HTTP/1.1 101 Switching Protocols',
+		'Upgrade: websocket',
+		'Connection: Upgrade',
+		'Sec-WebSocket-Accept: ' + response.headers['sec-websocket-accept'],
+		'Sec-WebSocket-Protocol: ' + first_protocol,
+	].concat('', '').join('\r\n');
 
-	if(!('sec-webSocket-protocol' in response_headers)){
-		response_headers['sec-websocket-protocol'] = a_protocol;
-	}
-
-	const response_headers_mapped = MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), response_headers);
-
-	let handshake = `HTTP/1.1 ${response.statusCode} ${response.statusMessage}\r\n`;
-	
-	for (let header in response_headers_mapped) {
-		handshake += `${header}: ${response_headers_mapped[header]}\r\n`;
-	}
-
-	handshake += '\r\n';
-	
-	server_socket.write(handshake);
+	server_socket.write(response_headers);
 	server_socket.write(head);
 
 	socket.on('close', () => {
