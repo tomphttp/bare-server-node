@@ -1,5 +1,5 @@
-import http, { request } from 'http';
-import https from 'https';
+import http from 'node:http';
+import https from 'node:https';
 import { MapHeaderNamesFromArray, RawHeaderNames } from './HeaderUtil.mjs';
 import { decode_protocol } from './EncodeProtocol.mjs';
 import { Response } from './Response.mjs';
@@ -154,15 +154,20 @@ export async function v1(server_request){
 
 export async function v1socket(server, server_request, server_socket, server_head){
 	if(!server_request.headers['sec-websocket-protocol']){
-		return socket.end();
+		return server_socket.end();
 	}
 
 	const [ first_protocol, data ] = server_request.headers['sec-websocket-protocol'].split(/,\s*/g);
 	
+	if(first_protocol !== 'bare'){
+		return server_socket.end();
+	}
+
 	const {
 		remote,
 		headers,
 		forward_headers,
+		id,
 	} = JSON.parse(decode_protocol(data));
 	
 	load_forwarded_headers(server_request, forward_headers, headers);
@@ -194,15 +199,24 @@ export async function v1socket(server, server_request, server_socket, server_hea
 
 	const [ response, socket, head ] = await response_promise;
 	
-	const response_headers = [
-		'HTTP/1.1 101 Switching Protocols',
-		'Upgrade: websocket',
-		'Connection: Upgrade',
-		'Sec-WebSocket-Accept: ' + response.headers['sec-websocket-accept'],
-		'Sec-WebSocket-Protocol: ' + first_protocol,
-	].concat('', '').join('\r\n');
+	const meta = {
+		headers: MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), {...response.headers}),
+	};
 
-	server_socket.write(response_headers);
+	const response_headers = [
+		`HTTP/1.1 101 Switching Protocols`,
+		`Upgrade: websocket`,
+		`Connection: Upgrade`,
+		`Sec-WebSocket-Protocol: bare`,
+		`Sec-WebSocket-Accept: ${response.headers['sec-websocket-accept']}`,
+		`Set-Cookie: bare-meta-${id}=${JSON.stringify(meta)}`,
+	];
+
+	if('sec-websocket-extensions' in response.headers){
+		response_headers.push(`Sec-WebSocket-Extensions: ${response.headers['sec-websocket-extensions']}`);
+	}
+
+	server_socket.write(response_headers.concat('', '').join('\r\n'));
 	server_socket.write(head);
 
 	socket.on('close', () => {
