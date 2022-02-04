@@ -25,7 +25,6 @@
 	"license": "GPL-3.0",
 	"type": "module",
 	"dependencies": {
-		"commander": "^9.0.0",
-		"ws": "^8.4.2"
+		"commander": "^9.0.0"
 	}
 }
