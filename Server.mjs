@@ -1,10 +1,7 @@
-import { v1, v1socket } from './V1.mjs';
+import { v1, v1socket, v1wsmeta } from './V1.mjs';
 import { Response } from './Response.mjs';
 
 export class Server {
-	versions = {
-		v1,
-	};
 	prefix = '/';
 	fof = this.json(404, { message: 'Not found.' });
 	constructor(directory){
@@ -44,7 +41,7 @@ export class Server {
 	}
 	get instance_info(){
 		return {
-			versions: Object.keys(this.versions),
+			versions: [ 'v1' ],
 			language: 'NodeJS',
 			memoryUsage: Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
 			requestReceived: Date.now(),
@@ -81,7 +78,12 @@ export class Server {
 					break;
 				case'/v1/':
 
-					response = await this.versions.v1(server_request);
+					response = await v1(this, server_request);
+
+					break;
+				case'/v1/ws-meta':
+
+					response = await v1wsmeta(this, server_request);
 
 					break;
 				default:

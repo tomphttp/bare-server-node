@@ -3,6 +3,7 @@ import https from 'node:https';
 import { MapHeaderNamesFromArray, RawHeaderNames } from './HeaderUtil.mjs';
 import { decode_protocol } from './EncodeProtocol.mjs';
 import { Response } from './Response.mjs';
+import { encode } from 'node:punycode';
 
 // max of 4 concurrent sockets, rest is queued while busy? set max to 75
 // const http_agent = http.Agent();
@@ -109,7 +110,7 @@ function read_headers(server_request, request_headers){
 	return { remote, headers };
 }
 
-export async function v1(server_request){
+export async function v1(server, server_request){
 	const response_headers = Object.setPrototypeOf({}, null);
 
 	response_headers['x-robots-tag'] = 'noindex';
@@ -150,6 +151,31 @@ export async function v1(server_request){
 	response_headers['x-bare-status-text'] = response.statusMessage;
 
 	return new Response(response, 200, response_headers);
+}
+
+// prevent users from specifying id=__proto__ or id=constructor
+const temp_meta = Object.setPrototypeOf({}, null);
+
+setInterval(() => {
+	for(let id in temp_meta){
+		if(temp_meta[id].expires < Date.now()){
+			delete temp_meta[id];
+		}
+	}
+}, 1e3);
+
+export function v1wsmeta(server, server_request){
+	const id = server_request.headers['x-bare-id'];
+
+	if(!(id in temp_meta)){
+		return server.json(400, { message: 'Unregistered ID' });
+	}
+
+	const { meta } = temp_meta[id];
+
+	delete temp_meta[id];
+
+	return server.json(200, meta);
 }
 
 export async function v1socket(server, server_request, server_socket, server_head){
@@ -203,13 +229,17 @@ export async function v1socket(server, server_request, server_socket, server_hea
 		headers: MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), {...response.headers}),
 	};
 
+	temp_meta[id] = {
+		expires: Date.now() + 30e3,
+		meta,
+	};
+
 	const response_headers = [
 		`HTTP/1.1 101 Switching Protocols`,
 		`Upgrade: websocket`,
 		`Connection: Upgrade`,
 		`Sec-WebSocket-Protocol: bare`,
 		`Sec-WebSocket-Accept: ${response.headers['sec-websocket-accept']}`,
-		`Set-Cookie: bare-meta-${id}=${JSON.stringify(meta)}`,
 	];
 
 	if('sec-websocket-extensions' in response.headers){
@@ -220,12 +250,12 @@ export async function v1socket(server, server_request, server_socket, server_hea
 	server_socket.write(head);
 
 	socket.on('close', () => {
-		console.log('Remote closed');
+		// console.log('Remote closed');
 		server_socket.end();
 	});
 
 	server_socket.on('close', () => {
-		console.log('Serving closed');
+		// console.log('Serving closed');
 		socket.end();
 	});
 
