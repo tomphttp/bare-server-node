@@ -2,6 +2,7 @@ import { Server as BareServer } from './Server.mjs';
 import { Server as HTTPServer, Server } from 'node:http';
 import { Server as TLSHTTPServer } from 'node:https';
 import { readFile } from 'node:fs/promises';
+import { cwd } from 'node:process';
 
 import { program, Option } from 'commander';
 import { resolve } from 'node:path';
@@ -27,17 +28,16 @@ console.info('Created bare server on directory:', options.directory);
 let http;
 
 if(options.tls){
-	const cwd = process.cwd();
 	const tls = {};
 	
 	if(options.key !== ''){
-		options.key = resolve(cwd, options.key);
+		options.key = resolve(cwd(), options.key);
 		console.info('Reading key from file:', options.key);
 		tls.key = await readFile(options.key);
 	}
 
 	if(options.cert !== ''){
-		options.cert = resolve(cwd, options.cert);
+		options.cert = resolve(cwd(), options.cert);
 		console.info('Reading certificate from file:', options.cert);
 		tls.cert = await readFile(options.cert);
 	}
