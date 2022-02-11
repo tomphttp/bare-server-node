@@ -4,7 +4,16 @@ import { Response } from './Response.mjs';
 export class Server {
 	prefix = '/';
 	fof = this.json(404, { message: 'Not found.' });
-	constructor(directory){
+	maintainer = undefined;
+	developer = {
+		name: 'TOMPHTTP NodeJS Bare Server',
+		repository: 'https://github.com/tomphttp/bare-server-node',
+	};
+	constructor(directory, maintainer){
+		if(typeof maintainer == 'object' && maintainer === null){
+			this.maintainer = maintainer;
+		}
+
 		if(typeof directory != 'string'){
 			throw new Error('Directory must be specified.')
 		}
@@ -45,6 +54,8 @@ export class Server {
 			language: 'NodeJS',
 			memoryUsage: Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
 			requestReceived: Date.now(),
+			maintainer: this.maintainer,
+			developer: this.developer,
 		};
 	}
 	async upgrade(request, socket, head){
