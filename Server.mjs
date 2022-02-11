@@ -5,7 +5,7 @@ export class Server {
 	prefix = '/';
 	fof = this.json(404, { message: 'Not found.' });
 	maintainer = undefined;
-	developer = {
+	author = {
 		name: 'TOMPHTTP NodeJS Bare Server',
 		repository: 'https://github.com/tomphttp/bare-server-node',
 	};
@@ -53,7 +53,6 @@ export class Server {
 			versions: [ 'v1' ],
 			language: 'NodeJS',
 			memoryUsage: Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
-			requestReceived: Date.now(),
 			maintainer: this.maintainer,
 			developer: this.developer,
 		};
