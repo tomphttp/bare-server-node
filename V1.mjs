@@ -3,7 +3,6 @@ import https from 'node:https';
 import { MapHeaderNamesFromArray, RawHeaderNames } from './HeaderUtil.mjs';
 import { decode_protocol } from './EncodeProtocol.mjs';
 import { Response } from './Response.mjs';
-import { encode } from 'node:punycode';
 
 // max of 4 concurrent sockets, rest is queued while busy? set max to 75
 // const http_agent = http.Agent();
