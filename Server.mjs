@@ -1,4 +1,4 @@
-import { v1, v1socket, v1wsmeta } from './V1.mjs';
+import { v1, v1socket, v1wsmeta, v1wsnewmeta } from './V1.mjs';
 import { Response } from './Response.mjs';
 
 export class Server {
@@ -94,6 +94,11 @@ export class Server {
 				case'/v1/ws-meta':
 
 					response = await v1wsmeta(this, server_request);
+
+					break;
+				case'/v1/ws-new-meta':
+
+					response = await v1wsnewmeta(this, server_request);
 
 					break;
 				default:

@@ -3,6 +3,10 @@ import https from 'node:https';
 import { MapHeaderNamesFromArray, RawHeaderNames } from './HeaderUtil.mjs';
 import { decode_protocol } from './EncodeProtocol.mjs';
 import { Response } from './Response.mjs';
+import { randomBytes } from 'node:crypto';
+import { promisify } from 'node:util';
+
+const randomBytesAsync = promisify(randomBytes);
 
 // max of 4 concurrent sockets, rest is queued while busy? set max to 75
 // const http_agent = http.Agent();
@@ -163,7 +167,7 @@ setInterval(() => {
 	}
 }, 1e3);
 
-export function v1wsmeta(server, server_request){
+export async function v1wsmeta(server, server_request){
 	const id = server_request.headers['x-bare-id'];
 
 	if(!(id in temp_meta)){
@@ -177,15 +181,27 @@ export function v1wsmeta(server, server_request){
 	return server.json(200, meta);
 }
 
+export async function v1wsnewmeta(server, server_request){
+	const id = (await randomBytesAsync(32)).toString('hex');
+
+	temp_meta[id] = {
+		expires: Date.now() + 30e3,
+	};
+	
+	return new Response(Buffer.from(id.toString('hex')))
+}
+
 export async function v1socket(server, server_request, server_socket, server_head){
 	if(!server_request.headers['sec-websocket-protocol']){
-		return server_socket.end();
+		server_socket.end();
+		return;
 	}
 
 	const [ first_protocol, data ] = server_request.headers['sec-websocket-protocol'].split(/,\s*/g);
 	
 	if(first_protocol !== 'bare'){
-		return server_socket.end();
+		server_socket.end();
+		return;
 	}
 
 	const {
@@ -195,6 +211,11 @@ export async function v1socket(server, server_request, server_socket, server_hea
 		id,
 	} = JSON.parse(decode_protocol(data));
 	
+	if(!(id in temp_meta)){
+		server_socket.end();
+		return;
+	}
+
 	load_forwarded_headers(server_request, forward_headers, headers);
 
 	const options = {
@@ -228,11 +249,8 @@ export async function v1socket(server, server_request, server_socket, server_hea
 		headers: MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), {...response.headers}),
 	};
 
-	temp_meta[id] = {
-		expires: Date.now() + 30e3,
-		meta,
-	};
-
+	temp_meta[id].meta = meta;
+	
 	const response_headers = [
 		`HTTP/1.1 101 Switching Protocols`,
 		`Upgrade: websocket`,
