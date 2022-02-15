@@ -1,4 +1,4 @@
-import zlib from 'zlib';
+import zlib from 'node:zlib';
 
 export async function DecompressStream(stream, encoding){
 	// For Node v6+
