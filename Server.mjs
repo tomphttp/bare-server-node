@@ -109,8 +109,10 @@ export class Server {
 		}catch(err){
 			console.error(err);
 			
-			response = this.json(400, {
-				message: `TOMPServer encountered an exception while handling your request. Contact this server's administrator.`,
+			response = this.json(500, {
+				code: 'UNKNOWN',
+				id: 'unknown',
+				message: `An exception occured when creating a response. Contact this server's administrator.`,
 			});
 		}
 

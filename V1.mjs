@@ -67,12 +67,24 @@ function read_headers(server_request, request_headers){
 			
 			if(remote_prop === 'port'){
 				value = parseInt(value);
-				if(isNaN(value))return { error: `${header} was not a valid integer.` };
+				if(isNaN(value))return {
+					error: {
+						code: 'INVALID_BARE_HEADER',
+						id: `request.headers.${header}`,
+						message: `Header was not a valid integer.`,
+					},
+				};
 			}
 
 			remote[remote_prop] = value;
 		}else{
-			return { error: `${header} (remote.${remote_prop} was not specified.` };
+			return {
+				error: {
+					code: 'MISSING_BARE_HEADER',
+					id: `request.headers.${header}`,
+					message: `Header was not specified.`,
+				},
+			};
 		}
 	}
 	
@@ -82,12 +94,24 @@ function read_headers(server_request, request_headers){
 		try{
 			json = JSON.parse(request_headers['x-bare-headers']);
 		}catch(err){
-			return { error: `x-bare-forward-headers contained invalid JSON.` }
+			return {
+				error: {
+					code: 'INVALID_BARE_HEADERS',
+					id: `request.headers.${header}`,
+					message: `Header contained invalid JSON.`,
+				},
+			};
 		}
 
 		Object.assign(headers, json);
 	}else{
-		return { error: `x-bare-headers was not specified.` };
+		return {
+			error: {
+				code: 'MISSING_BARE_HEADER',
+				id: `request.headers.x-bare-headers`,
+				message: `Header was not specified.`,
+			},
+		};
 	}
 
 	if('x-bare-forward-headers' in request_headers){
@@ -96,7 +120,13 @@ function read_headers(server_request, request_headers){
 		try{
 			json = JSON.parse(request_headers['x-bare-forward-headers']);
 		}catch(err){
-			return { error: `x-bare-forward-headers contained invalid JSON.` }
+			return {
+				error: {
+					code: 'INVALID_BARE_HEADERS',
+					id: `request.headers.x-bare-forward-headers`,
+					message: `Header contained invalid JSON.`,
+				},
+			};
 		}
 
 		load_forwarded_headers(server_request, json, headers);
@@ -107,7 +137,13 @@ function read_headers(server_request, request_headers){
 			}
 		}
 	}else{
-		return { error: `x-bare-forward-headers was not specified.` };
+		return {
+			error: {
+				code: 'MISSING_BARE_HEADER',
+				id: `request.headers.x-bare-forward-headers`,
+				message: `Header was not specified.`,
+			},
+		};
 	}
 
 	return { remote, headers };
@@ -128,7 +164,7 @@ export async function v1(server, server_request){
 		if(server_request.method === 'OPTIONS'){
 			return new Response(undefined, 200, response_headers);
 		}else{
-			throw new TypeError(error);
+			return server.json(400, error);
 		}
 	}
 
@@ -168,10 +204,22 @@ setInterval(() => {
 }, 1e3);
 
 export async function v1wsmeta(server, server_request){
+	if(!('x-bare-id' in temp_meta)){
+		return server.json(400, {
+			code: 'MISSING_BARE_HEADER',
+			id: 'request.headers.x-bare-id',
+			message: 'Header was not specified',
+		});
+	}
+
 	const id = server_request.headers['x-bare-id'];
 
 	if(!(id in temp_meta)){
-		return server.json(400, { message: 'Unregistered ID' });
+		return server.json(400, {
+			code: 'INVALID_BARE_HEADER',
+			id: 'request.headers.x-bare-id',
+			message: 'Unregistered ID',
+		});
 	}
 
 	const { meta } = temp_meta[id];
