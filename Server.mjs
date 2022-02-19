@@ -109,11 +109,21 @@ export class Server {
 		}catch(err){
 			console.error(err);
 			
-			response = this.json(500, {
-				code: 'UNKNOWN',
-				id: 'unknown',
-				message: `An exception occured when creating a response. Contact this server's administrator.`,
-			});
+			if(err instanceof Error){
+				response = this.json(500, {
+					code: 'UNKNOWN',
+					id: `error.${err.name}`,
+					message: err.message,
+					stack: err.stack,
+				});
+			}else{
+				response = this.json(500, {
+					code: 'UNKNOWN',
+					id: 'error.Exception',
+					message: err,
+					stack: new Error(err).stack,
+				});
+			}
 		}
 
 		if(!(response instanceof Response)){

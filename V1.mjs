@@ -173,7 +173,6 @@ export async function v1(server, server_request){
 	try{
 		response = await Fetch(server_request, headers, remote);
 	}catch(err){
-		console.error(err, remote);
 		throw err;
 	}
 
