@@ -203,7 +203,7 @@ setInterval(() => {
 }, 1e3);
 
 export async function v1wsmeta(server, server_request){
-	if(!('x-bare-id' in temp_meta)){
+	if(!('x-bare-id' in server_request.headers)){
 		return server.json(400, {
 			code: 'MISSING_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
