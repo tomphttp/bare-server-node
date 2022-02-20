@@ -23,7 +23,7 @@ program.parse(process.argv);
 const options = program.opts();
 
 const bare = new BareServer(options.directory);
-console.info('Created bare server on directory:', options.directory);
+console.info('Created Bare Server on directory:', options.directory);
 
 let http;
 
