@@ -139,12 +139,6 @@ function read_headers(server_request, request_headers){
 		}
 
 		load_forwarded_headers(server_request, json, headers);
-		
-		for(let header of json){
-			if(header in headers){
-				headers[header] = request_headers[header];
-			}
-		}
 	}else{
 		return {
 			error: {
