@@ -21,25 +21,22 @@ async function Fetch(server_request, request_headers, url){
 		headers: request_headers,
 	};
 	
-	let request_stream;
-	
-	let response_promise = new Promise((resolve, reject) => {
-		try{
-			if(url.protocol === 'https:')request_stream = https.request(options, resolve);
-			else if(url.protocol === 'http:')request_stream = http.request(options, resolve);
-			else return reject(new RangeError(`Unsupported protocol: '${url.protocol}'`));
-			
-			request_stream.on('error', reject);
-		}catch(err){
-			reject(err);
-		}
-	});
+	let outgoing;
 
-	if(request_stream){
-		server_request.pipe(request_stream);
+	if(url.protocol === 'https:'){
+		outgoing = https.request(options);
+	}else if(url.protocol === 'http:'){
+		outgoing = http.request(options);
+	}else{
+		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 	}
 	
-	return await response_promise;
+	server_request.pipe(outgoing);
+	
+	return await new Promise((resolve, reject) => {
+		outgoing.on('response', resolve);
+		outgoing.on('error', reject);	
+	});
 }
 
 function load_forwarded_headers(request, forward, target){
@@ -277,11 +274,22 @@ export async function v1socket(server, server_request, server_socket, server_hea
 	
 	let response_promise = new Promise((resolve, reject) => {
 		try{
-			if(remote.protocol === 'wss:')request_stream = https.request(options, res => reject(`Remote didn't upgrade the request`));
-			else if(remote.protocol === 'ws:')request_stream = http.request(options, res => reject(`Remote didn't upgrade the request`));
-			else return reject(new RangeError(`Unsupported protocol: '${remote.protocol}'`));
+			if(remote.protocol === 'wss:'){
+				request_stream = https.request(options, res => {
+					reject(`Remote didn't upgrade the request`);
+				});
+			}else if(remote.protocol === 'ws:'){
+				request_stream = http.request(options, res => {
+					reject(`Remote didn't upgrade the request`);
+				});
+			}else{
+				return reject(new RangeError(`Unsupported protocol: '${remote.protocol}'`));
+			}
+
+			request_stream.on('upgrade', (...args) => {
+				resolve(args)
+			});
 			
-			request_stream.on('upgrade', (...args) => resolve(args))
 			request_stream.on('error', reject);
 			request_stream.write(server_head);
 			request_stream.end();
