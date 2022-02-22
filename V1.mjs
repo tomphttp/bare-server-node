@@ -90,6 +90,18 @@ function read_headers(server_request, request_headers){
 		
 		try{
 			json = JSON.parse(request_headers['x-bare-headers']);
+
+			for(let header in json){
+				if(typeof json[header] !== 'string' && !Array.isArray(json[header])){
+					return {
+						error: {
+							code: 'INVALID_BARE_HEADERS',
+							id: `request.headers.${header}`,
+							message: `Header was not a String or Array.`,
+						},
+					};
+				}
+			}
 		}catch(err){
 			return {
 				error: {
