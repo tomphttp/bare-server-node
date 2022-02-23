@@ -95,8 +95,8 @@ function read_headers(server_request, request_headers){
 				if(typeof json[header] !== 'string' && !Array.isArray(json[header])){
 					return {
 						error: {
-							code: 'INVALID_BARE_HEADERS',
-							id: `request.headers.${header}`,
+							code: 'INVALID_BARE_HEADER',
+							id: `bare.headers.${header}`,
 							message: `Header was not a String or Array.`,
 						},
 					};
@@ -105,7 +105,7 @@ function read_headers(server_request, request_headers){
 		}catch(err){
 			return {
 				error: {
-					code: 'INVALID_BARE_HEADERS',
+					code: 'INVALID_BARE_HEADER',
 					id: `request.headers.${header}`,
 					message: `Header contained invalid JSON.`,
 				},
