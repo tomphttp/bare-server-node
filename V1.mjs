@@ -107,7 +107,7 @@ function read_headers(server_request, request_headers){
 				error: {
 					code: 'INVALID_BARE_HEADER',
 					id: `request.headers.${header}`,
-					message: `Header contained invalid JSON.`,
+					message: `Header contained invalid JSON. (${err.message})`,
 				},
 			};
 		}
@@ -133,7 +133,7 @@ function read_headers(server_request, request_headers){
 				error: {
 					code: 'INVALID_BARE_HEADER',
 					id: `request.headers.x-bare-forward-headers`,
-					message: `Header contained invalid JSON.`,
+					message: `Header contained invalid JSON. (${err.message})`,
 				},
 			};
 		}
