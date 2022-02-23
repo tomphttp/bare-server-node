@@ -131,7 +131,7 @@ function read_headers(server_request, request_headers){
 		}catch(err){
 			return {
 				error: {
-					code: 'INVALID_BARE_HEADERS',
+					code: 'INVALID_BARE_HEADER',
 					id: `request.headers.x-bare-forward-headers`,
 					message: `Header contained invalid JSON.`,
 				},
