@@ -10,7 +10,7 @@ export class Server {
 		repository: 'https://github.com/tomphttp/bare-server-node',
 	};
 	log_error = false;
-	constructor(directory, maintainer, log_error){
+	constructor(directory, log_error, maintainer){
 		if(typeof log_error === 'boolean'){
 			this.log_error = true;
 		}
