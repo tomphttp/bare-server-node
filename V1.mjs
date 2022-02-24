@@ -178,6 +178,12 @@ export async function v1(server, server_request){
 	}catch(err){
 		if(err instanceof Error){
 			switch(err.code){
+				case'ENOTFOUND':
+					return server.json(500, {
+						code: 'HOST_NOT_FOUND',
+						id: 'response',
+						message: 'The provided host could not be resolved.',
+					});
 				case'ECONNREFUSED':
 					return server.json(500, {
 						code: 'CONNECTION_REFUSED',
@@ -189,12 +195,6 @@ export async function v1(server, server_request){
 						code: 'CONNECTION_RESET',
 						id: 'response',
 						message: 'The request was forcibly closed.',
-					});
-				case'ENOTFOUND':
-					return server.json(500, {
-						code: 'HOST_NOT_FOUND',
-						id: 'response',
-						message: 'The provided host could not be resolved.',
 					});
 				case'ETIMEOUT':
 					return server.json(500, {
