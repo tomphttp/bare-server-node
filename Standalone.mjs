@@ -13,7 +13,7 @@ program
 .addOption(new Option('--d, --directory <string>', 'Bare directory').default('/'))
 .addOption(new Option('--h, --host <string>', 'Listening host').default('localhost').env('PORT'))
 .addOption(new Option('--p, --port <number>', 'Listening port').default(default_port).env('PORT'))
-.addOption(new Option('--e, --error', 'Error logging').default(true))
+.addOption(new Option('--e, --error', 'Error logging').default(false))
 .addOption(new Option('--tls', 'use HTTPS (TLS/SSL)'))
 .addOption(new Option('--cert <string>', 'TLS certificate').default(''))
 .addOption(new Option('--key <string>', 'TLS key').default(''))
@@ -25,7 +25,7 @@ const options = program.opts();
 
 const bare = new BareServer(options.directory, options.error);
 console.info('Created Bare Server on directory:', options.directory);
-console.info('Error logging is', options.error ? 'enabled' : 'disabled.');
+console.info('Error logging is', options.error ? 'enabled.' : 'disabled.');
 
 let http;
 
