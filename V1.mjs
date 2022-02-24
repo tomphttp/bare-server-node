@@ -261,11 +261,6 @@ export async function v1socket(server, server_request, server_socket, server_hea
 		id,
 	} = JSON.parse(decode_protocol(data));
 	
-	if(!(id in temp_meta)){
-		server_socket.end();
-		return;
-	}
-
 	load_forwarded_headers(server_request, forward_headers, headers);
 
 	const options = {
@@ -306,11 +301,19 @@ export async function v1socket(server, server_request, server_socket, server_hea
 
 	const [ response, socket, head ] = await response_promise;
 	
-	const meta = {
-		headers: MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), {...response.headers}),
-	};
+	if('id' in temp_meta){
+		if(typeof id !== 'string'){
+			socket.end();
+			return;
+		}
 
-	temp_meta[id].meta = meta;
+		const meta = {
+			headers: MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), {...response.headers}),
+		};
+		
+		temp_meta[id].meta = meta;
+	}
+
 	
 	const response_headers = [
 		`HTTP/1.1 101 Switching Protocols`,
