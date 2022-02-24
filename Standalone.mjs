@@ -13,7 +13,7 @@ program
 .addOption(new Option('--d, --directory <string>', 'Bare directory').default('/'))
 .addOption(new Option('--h, --host <string>', 'Listening host').default('localhost').env('PORT'))
 .addOption(new Option('--p, --port <number>', 'Listening port').default(default_port).env('PORT'))
-.addOption(new Option('--error', 'Log errors').default(true))
+.addOption(new Option('--error', 'Error logging').default(true))
 .addOption(new Option('--tls', 'use HTTPS (TLS/SSL)'))
 .addOption(new Option('--cert <string>', 'TLS certificate').default(''))
 .addOption(new Option('--key <string>', 'TLS key').default(''))
