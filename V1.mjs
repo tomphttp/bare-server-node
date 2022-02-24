@@ -181,7 +181,7 @@ export async function v1(server, server_request){
 				case'ENOTFOUND':
 					return server.json(500, {
 						code: 'HOST_NOT_FOUND',
-						id: 'response',
+						id: 'request',
 						message: 'The provided host could not be resolved.',
 					});
 				case'ECONNREFUSED':
