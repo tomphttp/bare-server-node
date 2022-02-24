@@ -176,6 +176,35 @@ export async function v1(server, server_request){
 	try{
 		response = await Fetch(server_request, headers, remote);
 	}catch(err){
+		if(err instanceof Error){
+			switch(err.code){
+				case'ECONNREFUSED':
+					return server.json(500, {
+						code: 'CONNECTION_REFUSED',
+						id: 'response',
+						message: 'The remote rejected the request.',
+					});
+				case'ECONNRESET':
+					return server.json(500, {
+						code: 'CONNECTION_RESET',
+						id: 'response',
+						message: 'The request was forcibly closed.',
+					});
+				case'ENOTFOUND':
+					return server.json(500, {
+						code: 'HOST_NOT_FOUND',
+						id: 'response',
+						message: 'The provided host could not be resolved.',
+					});
+				case'ETIMEOUT':
+					return server.json(500, {
+						code: 'CONNECTION_TIMEOUT',
+						id: 'response',
+						message: 'The response timed out.',
+					});
+			}
+		}
+
 		throw err;
 	}
 
