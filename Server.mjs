@@ -9,12 +9,17 @@ export class Server {
 		name: 'TOMPHTTP NodeJS Bare Server',
 		repository: 'https://github.com/tomphttp/bare-server-node',
 	};
-	constructor(directory, maintainer){
-		if(typeof maintainer == 'object' && maintainer === null){
+	log_error = false;
+	constructor(directory, maintainer, log_error){
+		if(typeof log_error === 'boolean'){
+			this.log_error = true;
+		}
+
+		if(typeof maintainer === 'object' && maintainer === null){
 			this.maintainer = maintainer;
 		}
 
-		if(typeof directory != 'string'){
+		if(typeof directory !== 'string'){
 			throw new Error('Directory must be specified.')
 		}
 
@@ -23,6 +28,11 @@ export class Server {
 		}
 
 		this.directory = directory;
+	}
+	error(...args){
+		if(this.log_error){
+			console.error(...args);
+		}
 	}
 	json(status, json){
 		const send = Buffer.from(JSON.stringify(json, null, '\t'));
@@ -70,7 +80,7 @@ export class Server {
 					break;
 			}
 		}catch(err){
-			console.error(err);
+			this.error(err);
 			socket.end();
 		}
 	}
@@ -107,7 +117,7 @@ export class Server {
 
 			}
 		}catch(err){
-			console.error(err);
+			this.error(err);
 			
 			if(err instanceof Error){
 				response = this.json(500, {
@@ -127,7 +137,7 @@ export class Server {
 		}
 
 		if(!(response instanceof Response)){
-			console.error('Response to', server_request.url, 'was not a response.');
+			this.error('Response to', server_request.url, 'was not a response.');
 			response = this.fof;
 		}
 		
