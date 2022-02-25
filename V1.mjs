@@ -18,7 +18,6 @@ async function Fetch(server_request, request_headers, url){
 		port: url.port,
 		path: url.path,
 		method: server_request.method,
-		rejectUnauthorized: false,
 		headers: request_headers,
 	};
 	
@@ -299,7 +298,6 @@ export async function v1socket(server, server_request, server_socket, server_hea
 		path: remote.path,
 		headers,
 		method: server_request.method,	
-		rejectUnauthorized: false,
 	};
 	
 	let request_stream;
