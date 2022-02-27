@@ -9,8 +9,14 @@ import { promisify } from 'node:util';
 const randomBytesAsync = promisify(randomBytes);
 
 // max of 4 concurrent sockets, rest is queued while busy? set max to 75
-// const http_agent = http.Agent();
-// const https_agent = https.Agent();
+
+const http_agent = http.Agent({
+	keepAlive: true,
+});
+
+const https_agent = https.Agent({
+	keepAlive: true,
+});
 
 async function Fetch(server_request, request_headers, url){
 	const options = {
@@ -24,9 +30,9 @@ async function Fetch(server_request, request_headers, url){
 	let outgoing;
 
 	if(url.protocol === 'https:'){
-		outgoing = https.request(options);
+		outgoing = https.request({ ...options, agent: https_agent });
 	}else if(url.protocol === 'http:'){
-		outgoing = http.request(options);
+		outgoing = http.request({ ...options, agent: http_agent });
 	}else{
 		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 	}
@@ -305,11 +311,11 @@ export async function v1socket(server, server_request, server_socket, server_hea
 	let response_promise = new Promise((resolve, reject) => {
 		try{
 			if(remote.protocol === 'wss:'){
-				request_stream = https.request(options, res => {
+				request_stream = https.request({ ...options, agent: https_agent }, res => {
 					reject(`Remote didn't upgrade the request`);
 				});
 			}else if(remote.protocol === 'ws:'){
-				request_stream = http.request(options, res => {
+				request_stream = http.request({ ...options, agent: http_agent }, res => {
 					reject(`Remote didn't upgrade the request`);
 				});
 			}else{
