@@ -17,7 +17,7 @@ const bare = new BareServer(options.directory, options.errors);
 console.info('Created Bare Server on directory:', options.directory);
 console.info('Error logging is', options.errors ? 'enabled.' : 'disabled.');
 
-let http = new HTTPServer();
+const http = new HTTPServer();
 console.info('Created HTTP server.');
 
 http.on('request', (req, res) => {
