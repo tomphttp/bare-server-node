@@ -336,7 +336,7 @@ export async function v1socket(server, server_request, server_socket, server_hea
 
 	const [ response, socket, head ] = await response_promise;
 	
-	if('id' in temp_meta){
+	if(id in temp_meta){
 		if(typeof id !== 'string'){
 			socket.end();
 			return;
@@ -349,7 +349,6 @@ export async function v1socket(server, server_request, server_socket, server_hea
 		temp_meta[id].meta = meta;
 	}
 
-	
 	const response_headers = [
 		`HTTP/1.1 101 Switching Protocols`,
 		`Upgrade: websocket`,
