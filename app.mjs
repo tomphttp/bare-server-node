@@ -1,10 +1,6 @@
 import { Server as BareServer } from './Server.mjs';
 import { Server as HTTPServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
-import { cwd } from 'node:process';
-
 import { program, Option } from 'commander';
-import { resolve } from 'node:path';
 
 program
 .addOption(new Option('--d, --directory <string>', 'Bare directory').default('/'))
