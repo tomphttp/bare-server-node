@@ -261,6 +261,10 @@ export async function v1wsmeta(server, server_request){
 
 	const { meta } = temp_meta[id];
 
+	if(typeof meta === 'undefined'){
+		return server.json(200, null);
+	}
+
 	delete temp_meta[id];
 
 	return server.json(200, meta);
