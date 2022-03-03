@@ -1,7 +1,7 @@
 import { v1, v1socket, v1wsmeta, v1wsnewmeta } from './V1.mjs';
 import { Response } from './Response.mjs';
 
-export class Server {
+export default class Server {
 	prefix = '/';
 	fof = this.json(404, { message: 'Not found.' });
 	maintainer = undefined;
