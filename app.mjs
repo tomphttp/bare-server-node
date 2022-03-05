@@ -33,7 +33,7 @@ http.on('upgrade', (req, socket, head) => {
 });
 
 http.on('listening', () => {
-	console.log(`HTTP server listening. View live at https://${options.host}:${options.port}${options.directory}`);
+	console.log(`HTTP server listening. View live at http://${options.host}:${options.port}${options.directory}`);
 });
 
 http.listen({
