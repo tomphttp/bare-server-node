@@ -1,4 +1,4 @@
-import BareServer from './Server.mjs';
+import BareServer from './Server.js';
 import { Server as HTTPServer } from 'node:http';
 import { program, Option } from 'commander';
 

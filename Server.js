@@ -1,5 +1,5 @@
 import { v1, v1socket, v1wsmeta, v1wsnewmeta } from './V1.js';
-import { Response } from './Response.js';
+import Response from './Response.js';
 
 export default class Server {
 	prefix = '/';
