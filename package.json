@@ -24,6 +24,7 @@
 	],
 	"license": "GPL-3.0",
 	"type": "module",
+	"main": "Server.mjs",
 	"dependencies": {
 		"commander": "^9.0.0"
 	}
