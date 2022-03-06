@@ -114,6 +114,8 @@ export default class Server {
 				default:
 
 					response = this.fof;
+					
+					break;
 
 			}
 		}catch(err){
@@ -141,6 +143,11 @@ export default class Server {
 			response = this.fof;
 		}
 		
+		response.headers['x-robots-tag'] = 'noindex';
+		response.headers['access-control-allow-headers'] = '*';
+		response.headers['access-control-allow-origin'] = '*';
+		response.headers['access-control-expose-headers'] = '*';
+
 		response.send(server_response);
 	}
 };

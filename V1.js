@@ -161,11 +161,6 @@ function read_headers(server_request, request_headers){
 export async function v1(server, server_request){
 	const response_headers = Object.setPrototypeOf({}, null);
 
-	response_headers['x-robots-tag'] = 'noindex';
-	response_headers['access-control-allow-headers'] = '*';
-	response_headers['access-control-allow-origin'] = '*';
-	response_headers['access-control-expose-headers'] = '*';
-	
 	const { error, remote, headers } = read_headers(server_request, server_request.headers);
 	
 	if(error){
