@@ -1,8 +1,8 @@
 import http from 'node:http';
 import https from 'node:https';
-import { MapHeaderNamesFromArray, RawHeaderNames } from './HeaderUtil.mjs';
-import { decode_protocol } from './EncodeProtocol.mjs';
-import { Response } from './Response.mjs';
+import Response from './Response.js';
+import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
+import { decodeProtocol } from './encodeProtocol.js';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 
@@ -18,7 +18,7 @@ const https_agent = https.Agent({
 	keepAlive: true,
 });
 
-async function Fetch(server_request, request_headers, url){
+async function fetch(server_request, request_headers, url){
 	const options = {
 		host: url.host,
 		port: url.port,
@@ -46,7 +46,7 @@ async function Fetch(server_request, request_headers, url){
 }
 
 function load_forwarded_headers(request, forward, target){
-	const raw = RawHeaderNames(request.rawHeaders);
+	const raw = rawHeaderNames(request.rawHeaders);
 
 	for(let header of forward){
 		for(let cap of raw){
@@ -180,7 +180,7 @@ export async function v1(server, server_request){
 	let response;
 
 	try{
-		response = await Fetch(server_request, headers, remote);
+		response = await fetch(server_request, headers, remote);
 	}catch(err){
 		if(err instanceof Error){
 			switch(err.code){
@@ -222,7 +222,7 @@ export async function v1(server, server_request){
 		}
 	}
 
-	response_headers['x-bare-headers'] = JSON.stringify(MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), {...response.headers}));
+	response_headers['x-bare-headers'] = JSON.stringify(mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {...response.headers}));
 	response_headers['x-bare-status'] = response.statusCode
 	response_headers['x-bare-status-text'] = response.statusMessage;
 
@@ -298,7 +298,7 @@ export async function v1socket(server, server_request, server_socket, server_hea
 		headers,
 		forward_headers,
 		id,
-	} = JSON.parse(decode_protocol(data));
+	} = JSON.parse(decodeProtocol(data));
 	
 	load_forwarded_headers(server_request, forward_headers, headers);
 
@@ -347,7 +347,7 @@ export async function v1socket(server, server_request, server_socket, server_hea
 		}
 
 		const meta = {
-			headers: MapHeaderNamesFromArray(RawHeaderNames(response.rawHeaders), {...response.headers}),
+			headers: mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {...response.headers}),
 		};
 		
 		temp_meta[id].meta = meta;

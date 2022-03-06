@@ -1,7 +1,7 @@
 import { OutgoingMessage } from 'node:http';
-import { Stream } from 'node:stream';
+import Stream from 'node:stream';
 
-export class Response {
+export default class Response {
 	headers = Object.setPrototypeOf({}, null);
 	status = 200;
 	constructor(body, status, headers){
