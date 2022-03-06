@@ -236,6 +236,10 @@ setInterval(() => {
 }, 1e3);
 
 export async function v1wsmeta(server, server_request){
+	if(server_request.method === 'OPTIONS'){
+		return new Response(undefined, 200);
+	}
+	
 	if(!('x-bare-id' in server_request.headers)){
 		return server.json(400, {
 			code: 'MISSING_BARE_HEADER',
@@ -305,35 +309,27 @@ export async function v1socket(server, server_request, server_socket, server_hea
 		method: server_request.method,	
 	};
 	
-	let request_stream;
-	
-	let response_promise = new Promise((resolve, reject) => {
-		try{
-			if(remote.protocol === 'wss:'){
-				request_stream = https.request({ ...options, agent: https_agent }, res => {
-					reject(`Remote didn't upgrade the request`);
-				});
-			}else if(remote.protocol === 'ws:'){
-				request_stream = http.request({ ...options, agent: http_agent }, res => {
-					reject(`Remote didn't upgrade the request`);
-				});
-			}else{
-				return reject(new RangeError(`Unsupported protocol: '${remote.protocol}'`));
-			}
+	let outgoing;
 
-			request_stream.on('upgrade', (...args) => {
-				resolve(args)
-			});
-			
-			request_stream.on('error', reject);
-			request_stream.write(server_head);
-			request_stream.end();
-		}catch(err){
-			reject(err);
-		}
-	});
+	if(remote.protocol === 'wss:'){
+		outgoing = https.request({ ...options, agent: https_agent });
+	}else if(remote.protocol === 'ws:'){
+		outgoing = http.request({ ...options, agent: http_agent });
+	}else{
+		throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
+	}
 
-	const [ response, socket, head ] = await response_promise;
+	outgoing.end();
+
+	const [ response, socket, head ] = await new Promise((resolve, reject) => {
+		outgoing.on('response', () => {
+			reject('Remote upgraded the WebSocket');
+		});
+
+		outgoing.on('upgrade', (...args) => resolve(args));
+		
+		outgoing.on('error', reject);
+	});;
 	
 	if(id in temp_meta){
 		if(typeof id !== 'string'){

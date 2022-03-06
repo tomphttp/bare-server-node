@@ -11,7 +11,7 @@ export default class Server {
 	};
 	log_error = false;
 	constructor(directory, log_error, maintainer){
-		if(typeof log_error === 'boolean'){
+		if(log_error === true){
 			this.log_error = true;
 		}
 
