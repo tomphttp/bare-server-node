@@ -1,4 +1,4 @@
-import { v1, v1socket, v1wsmeta, v1wsnewmeta } from './V1.js';
+import register from './V1.js';
 import Response from './Response.js';
 
 export default class Server {
@@ -10,6 +10,8 @@ export default class Server {
 		repository: 'https://github.com/tomphttp/bare-server-node',
 	};
 	log_error = false;
+	routes = new Map();
+	socket_routes = new Map();
 	constructor(directory, log_error, maintainer){
 		if(log_error === true){
 			this.log_error = true;
@@ -28,6 +30,12 @@ export default class Server {
 		}
 
 		this.directory = directory;
+		
+		this.routes.set('/', () => {
+			return this.json(200, this.instance_info);
+		});
+		
+		register(this);
 	}
 	error(...args){
 		if(this.log_error){
@@ -70,17 +78,16 @@ export default class Server {
 	async upgrade(request, socket, head){
 		const service = request.url.slice(this.directory.length - 1);
 		
-		try{
-			switch(service){
-				case'/v1/':
-					await v1socket(this, request, socket, head);
-					break;
-				default:
-					socket.end();
-					break;
+		if(this.routes.has(service)){
+			const call = this.socket_routes.get(service);
+
+			try{
+				await call(this, request, socket, head);
+			}catch(error){
+				this.error(error);
+				socket.end();
 			}
-		}catch(err){
-			this.error(err);
+		}else{
 			socket.end();
 		}
 	}
@@ -88,58 +95,36 @@ export default class Server {
 		const service = server_request.url.slice(this.directory.length - 1);
 		let response;
 
-		try{
-			switch(service){
-				case'/':
+		if(this.routes.has(service)){
+			const call = this.routes.get(service);
 
-					if(server_request.method != 'GET')response = this.json(405, { message: 'This route only accepts the GET method.' });
-					else response = this.json(200, this.instance_info);
-
-					break;
-				case'/v1/':
-
-					response = await v1(this, server_request);
-
-					break;
-				case'/v1/ws-meta':
-
-					response = await v1wsmeta(this, server_request);
-
-					break;
-				case'/v1/ws-new-meta':
-
-					response = await v1wsnewmeta(this, server_request);
-
-					break;
-				default:
-
-					response = this.fof;
-					
-					break;
-
+			try{
+				response = await call(this, server_request);
+			}catch(error){
+				this.error(error);
+				
+				if(error instanceof Error){
+					response = this.json(500, {
+						code: 'UNKNOWN',
+						id: `error.${error.name}`,
+						message: error.message,
+						stack: error.stack,
+					});
+				}else{
+					response = this.json(500, {
+						code: 'UNKNOWN',
+						id: 'error.Exception',
+						message: error,
+						stack: new Error(error).stack,
+					});
+				}
 			}
-		}catch(err){
-			this.error(err);
-			
-			if(err instanceof Error){
-				response = this.json(500, {
-					code: 'UNKNOWN',
-					id: `error.${err.name}`,
-					message: err.message,
-					stack: err.stack,
-				});
-			}else{
-				response = this.json(500, {
-					code: 'UNKNOWN',
-					id: 'error.Exception',
-					message: err,
-					stack: new Error(err).stack,
-				});
-			}
+		}else{
+			response = this.fof;
 		}
 
 		if(!(response instanceof Response)){
-			this.error('Response to', server_request.url, 'was not a response.');
+			this.error('Data', server_request.url, 'was not a response.');
 			response = this.fof;
 		}
 		

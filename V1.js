@@ -158,7 +158,7 @@ function read_headers(server_request, request_headers){
 	return { remote, headers };
 }
 
-export async function v1(server, server_request){
+async function v1(server, server_request){
 	const response_headers = Object.setPrototypeOf({}, null);
 
 	const { error, remote, headers } = read_headers(server_request, server_request.headers);
@@ -235,7 +235,7 @@ setInterval(() => {
 	}
 }, 1e3);
 
-export async function v1wsmeta(server, server_request){
+async function v1wsmeta(server, server_request){
 	if(server_request.method === 'OPTIONS'){
 		return new Response(undefined, 200);
 	}
@@ -269,7 +269,7 @@ export async function v1wsmeta(server, server_request){
 	return server.json(200, meta);
 }
 
-export async function v1wsnewmeta(server, server_request){
+async function v1wsnewmeta(server, server_request){
 	const id = (await randomBytesAsync(32)).toString('hex');
 
 	temp_meta[id] = {
@@ -279,7 +279,7 @@ export async function v1wsnewmeta(server, server_request){
 	return new Response(Buffer.from(id.toString('hex')))
 }
 
-export async function v1socket(server, server_request, server_socket, server_head){
+async function v1socket(server, server_request, server_socket, server_head){
 	if(!server_request.headers['sec-websocket-protocol']){
 		server_socket.end();
 		return;
@@ -326,10 +326,14 @@ export async function v1socket(server, server_request, server_socket, server_hea
 			reject('Remote upgraded the WebSocket');
 		});
 
-		outgoing.on('upgrade', (...args) => resolve(args));
-		
-		outgoing.on('error', reject);
-	});;
+		outgoing.on('upgrade', (...args) => {
+			resolve(args);
+		});
+
+		outgoing.on('error', error => {
+			reject(error);
+		});
+	});
 	
 	if(id in temp_meta){
 		if(typeof id !== 'string'){
@@ -381,4 +385,11 @@ export async function v1socket(server, server_request, server_socket, server_hea
 
 	socket.pipe(server_socket);
 	server_socket.pipe(socket);
+}
+
+export default function register(server){
+	server.routes.set('/v1/', v1);
+	server.routes.set('/v1/ws-new-meta', v1wsnewmeta);
+	server.routes.set('/v1/ws-meta', v1wsmeta);
+	server.socket_routes.set('/v1/', v1socket);
 }
