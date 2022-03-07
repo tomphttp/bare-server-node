@@ -25,6 +25,7 @@ async function fetch(server_request, request_headers, url){
 		path: url.path,
 		method: server_request.method,
 		headers: request_headers,
+		setHost: false,
 	};
 	
 	let outgoing;
@@ -306,7 +307,8 @@ async function v1socket(server, server_request, server_socket, server_head){
 		port: remote.port,
 		path: remote.path,
 		headers,
-		method: server_request.method,	
+		method: server_request.method,
+		setHost: false,
 	};
 	
 	let outgoing;
