@@ -9,12 +9,17 @@ export default class Server {
 		name: 'TOMPHTTP NodeJS Bare Server',
 		repository: 'https://github.com/tomphttp/bare-server-node',
 	};
-	log_error = false;
+	log_errors = false;
+	local_address = undefined;
 	routes = new Map();
 	socket_routes = new Map();
-	constructor(directory, log_error, maintainer){
-		if(log_error === true){
-			this.log_error = true;
+	constructor(directory, log_errors, local_address, maintainer){
+		if(log_errors === true){
+			this.log_errors = true;
+		}
+
+		if(typeof local_address === 'string'){
+			this.local_address = local_address;
 		}
 
 		if(typeof maintainer === 'object' && maintainer === null){
@@ -38,7 +43,7 @@ export default class Server {
 		register(this);
 	}
 	error(...args){
-		if(this.log_error){
+		if(this.log_errors){
 			console.error(...args);
 		}
 	}

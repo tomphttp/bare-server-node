@@ -1,8 +1,8 @@
 import BareServer from '../Server.js';
 import { Server as HTTPServer } from 'node:http';
 
-export default function server({ directory, errors, host, port }){
-	const bare = new BareServer(directory, errors);
+export default function server({ directory, errors, host, port, localAddress }){
+	const bare = new BareServer(directory, errors, localAddress);
 	console.info('Created Bare Server on directory:', directory);
 	console.info('Error logging is', errors ? 'enabled.' : 'disabled.');
 	

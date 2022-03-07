@@ -18,7 +18,7 @@ const https_agent = https.Agent({
 	keepAlive: true,
 });
 
-async function fetch(server_request, request_headers, url){
+async function fetch(server, server_request, request_headers, url){
 	const options = {
 		host: url.host,
 		port: url.port,
@@ -26,6 +26,7 @@ async function fetch(server_request, request_headers, url){
 		method: server_request.method,
 		headers: request_headers,
 		setHost: false,
+		localAddress: server.local_address,
 	};
 	
 	let outgoing;
@@ -43,6 +44,44 @@ async function fetch(server_request, request_headers, url){
 	return await new Promise((resolve, reject) => {
 		outgoing.on('response', resolve);
 		outgoing.on('error', reject);	
+	});
+}
+
+async function upgradeFetch(server, server_request, request_headers, url){
+	const options = {
+		host: url.host,
+		port: url.port,
+		path: url.path,
+		headers: request_headers,
+		method: server_request.method,
+		setHost: false,
+		localAddress: server.local_address,
+	};
+	
+	let outgoing;
+
+	if(url.protocol === 'wss:'){
+		outgoing = https.request({ ...options, agent: https_agent });
+	}else if(url.protocol === 'ws:'){
+		outgoing = http.request({ ...options, agent: http_agent });
+	}else{
+		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
+	}
+
+	outgoing.end();
+	
+	return await new Promise((resolve, reject) => {
+		outgoing.on('response', () => {
+			reject('Remote upgraded the WebSocket');
+		});
+
+		outgoing.on('upgrade', (...args) => {
+			resolve(args);
+		});
+
+		outgoing.on('error', error => {
+			reject(error);
+		});
 	});
 }
 
@@ -176,7 +215,7 @@ async function v1(server, server_request){
 	let response;
 
 	try{
-		response = await fetch(server_request, headers, remote);
+		response = await fetch(server, server_request, headers, remote);
 	}catch(err){
 		if(err instanceof Error){
 			switch(err.code){
@@ -302,41 +341,8 @@ async function v1socket(server, server_request, server_socket, server_head){
 	
 	load_forwarded_headers(server_request, forward_headers, headers);
 
-	const options = {
-		host: remote.host,
-		port: remote.port,
-		path: remote.path,
-		headers,
-		method: server_request.method,
-		setHost: false,
-	};
-	
-	let outgoing;
+	const [ response, socket, head ] = await upgradeFetch(server, server_request, headers, remote);
 
-	if(remote.protocol === 'wss:'){
-		outgoing = https.request({ ...options, agent: https_agent });
-	}else if(remote.protocol === 'ws:'){
-		outgoing = http.request({ ...options, agent: http_agent });
-	}else{
-		throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
-	}
-
-	outgoing.end();
-
-	const [ response, socket, head ] = await new Promise((resolve, reject) => {
-		outgoing.on('response', () => {
-			reject('Remote upgraded the WebSocket');
-		});
-
-		outgoing.on('upgrade', (...args) => {
-			resolve(args);
-		});
-
-		outgoing.on('error', error => {
-			reject(error);
-		});
-	});
-	
 	if(id in temp_meta){
 		if(typeof id !== 'string'){
 			socket.end();
