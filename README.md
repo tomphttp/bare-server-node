@@ -12,7 +12,7 @@ For more features, specify the `--help` option when running the CLI.
 
 1. Clone the repository locally
 ```sh
-git clone https:/github.com/tomphttp/bare-server-node.git
+git clone https://github.com/tomphttp/bare-server-node.git
 ```
 
 2. Enter the folder
