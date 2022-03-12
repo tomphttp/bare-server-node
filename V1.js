@@ -344,11 +344,6 @@ async function v1socket(server, server_request, server_socket, server_head){
 	const [ response, socket, head ] = await upgradeFetch(server, server_request, headers, remote);
 
 	if(id in temp_meta){
-		if(typeof id !== 'string'){
-			socket.end();
-			return;
-		}
-
 		const meta = {
 			headers: mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {...response.headers}),
 		};
