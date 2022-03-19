@@ -139,7 +139,7 @@ export default class Server {
 		response.headers['access-control-expose-headers'] = '*';
 		// don't send preflight on every request...
 		// instead, send preflight every 10 minutes
-		response.headers['access-control-max-age'] = '600';
+		response.headers['access-control-max-age'] = '7200';
 
 		response.send(server_response);
 	}
