@@ -1,4 +1,5 @@
-import register from './V1.js';
+import register_v1 from './V1.js';
+import register_v2 from './V2.js';
 import Response from './Response.js';
 
 export default class Server {
@@ -40,7 +41,8 @@ export default class Server {
 			return this.json(200, this.instance_info);
 		});
 		
-		register(this);
+		register_v1(this);
+		register_v2(this);
 	}
 	error(...args){
 		if(this.log_errors){
@@ -73,7 +75,7 @@ export default class Server {
 	}
 	get instance_info(){
 		return {
-			versions: [ 'v1' ],
+			versions: [ 'v1', 'v2' ],
 			language: 'NodeJS',
 			memoryUsage: Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
 			maintainer: this.maintainer,
