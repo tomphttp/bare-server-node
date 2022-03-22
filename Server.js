@@ -138,6 +138,7 @@ export default class Server {
 		response.headers['x-robots-tag'] = 'noindex';
 		response.headers['access-control-allow-headers'] = '*';
 		response.headers['access-control-allow-origin'] = '*';
+		response.headers['access-control-allow-methods'] = '*';
 		response.headers['access-control-expose-headers'] = '*';
 		// don't send preflight on every request...
 		// instead, send preflight every 10 minutes

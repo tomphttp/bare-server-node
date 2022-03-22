@@ -1,6 +1,7 @@
 import http from 'node:http';
 import https from 'node:https';
 import Response from './Response.js';
+import { split_headers, join_headers } from './splitHeaderUtil.js';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
 import { decodeProtocol } from './encodeProtocol.js';
 import { randomBytes } from 'node:crypto';
@@ -98,72 +99,15 @@ function load_forwarded_headers(request, forward, target){
 	}
 }
 
-const MAX_HEADER_VALUE = 2096;
-
-// ,header,id
-const split_header = /(x-bare-\w+)-(\d)/g;
-
 function read_headers(server_request, request_headers){
 	const remote = Object.setPrototypeOf({}, null);
 	const headers = Object.setPrototypeOf({}, null);
 	const pass_headers = ['content-encoding', 'content-length'];
 	const pass_status = [];
-	const join_headers = {};
 
-	for(let header in request_headers){
-		if(header.startsWith('x-bare-')){
-			const value = request_headers[header];
-
-			if(value.length > MAX_HEADER_VALUE){
-				return {
-					error: {
-						code: 'INVALID_BARE_HEADER',
-						id: `request.headers.${header}`,
-						message: `Length for bare header exceeds the limit. (${value.length} > ${MAX_HEADER_VALUE})`,
-					},
-				};
-			}
-
-			const match = header.match(split_header);
-
-			if(match){
-				let [,target,id] = match;
-
-				id = parseInt(id);
-
-				if(isNaN(id) || id === 0){
-					return {
-						error: {
-							code: 'INVALID_BARE_HEADER',
-							id: `request.headers.${header}`,
-							message: `Split ID was not a number or 0.`,
-						},
-					};
-				}
-
-				if(!(target in request_headers)){
-					return {
-						error: {
-							code: 'INVALID_BARE_HEADER',
-							id: `request.headers.${header}`,
-							message: `Target header doesn't have an initial value.`,
-						},
-					};
-				}
-
-				if(!(target in join_headers)){
-					join_headers[target] = [ request_headers[target] ];
-				}
-
-				join_headers[target][id] = value;
-
-				delete request_headers[header];
-			}
-
-			for(let header in join_headers){
-				request_headers[header] = join_headers.join('');
-			}
-		}
+	const { error } = join_headers(request_headers);
+	if(error){
+		return { error };
 	}
 
 	for(let remote_prop of ['host','port','protocol','path']){
@@ -218,7 +162,7 @@ function read_headers(server_request, request_headers){
 			return {
 				error: {
 					code: 'INVALID_BARE_HEADER',
-					id: `request.headers.${header}`,
+					id: `request.headers.x-bare-headers`,
 					message: `Header contained invalid JSON. (${err.message})`,
 				},
 			};
@@ -392,7 +336,7 @@ async function request(server, server_request){
 	}
 
 	for(let header of pass_headers){
-		if(headers in response.headers){
+		if(header in response.headers){
 			response_headers[header] = response.headers[header];
 		}
 	}
@@ -400,6 +344,8 @@ async function request(server, server_request){
 	response_headers['x-bare-headers'] = JSON.stringify(mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {...response.headers}));
 	response_headers['x-bare-status'] = response.statusCode
 	response_headers['x-bare-status-text'] = response.statusMessage;
+
+	split_headers(response_headers);
 
 	let status;
 
