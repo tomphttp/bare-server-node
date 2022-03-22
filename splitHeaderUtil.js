@@ -2,7 +2,7 @@
     @type {number}
     @default
 */
-const MAX_HEADER_VALUE = 100;
+const MAX_HEADER_VALUE = 3072;
 // ,header,id
 const split_header = /^(x-bare-\w+)-(\d+)$/;
 
