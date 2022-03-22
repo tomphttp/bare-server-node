@@ -99,7 +99,20 @@ export default class Server {
 		}
 	}
 	async request(server_request, server_response){
-		const service = server_request.url.slice(this.directory.length - 1);
+		let queryi = server_request.url.indexOf('?');
+		
+		let path;
+		let query;
+
+		if(queryi === -1){
+			path = server_request.url;
+			query = '';
+		}else{
+			path = server_request.url.slice(0, queryi)
+			query = server_request.url.slice(queryi);
+		}
+
+		const service = path.slice(this.directory.length - 1);
 		let response;
 
 		if(this.routes.has(service)){

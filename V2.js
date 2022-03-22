@@ -404,13 +404,28 @@ async function get_meta(server, server_request){
 }
 
 async function new_meta(server, server_request){
+	const response_headers = Object.setPrototypeOf({}, null);
+
+	const { error, remote, headers, pass_headers, pass_status } = read_headers(server_request, server_request.headers);
+
+	if(error){
+		// sent by browser, not client
+		if(server_request.method === 'OPTIONS'){
+			return new Response(undefined, 200, response_headers);
+		}else{
+			return server.json(400, error);
+		}
+	}
+	
 	const id = (await randomBytesAsync(32)).toString('hex');
 
 	temp_meta[id] = {
 		expires: Date.now() + 30e3,
+		remote,
+		headers,
 	};
 	
-	return new Response(Buffer.from(id.toString('hex')))
+	return new Response(Buffer.from(id))
 }
 
 async function socket(server, server_request, server_socket, server_head){
@@ -427,18 +442,16 @@ async function socket(server, server_request, server_socket, server_head){
 	}
 
 	const id = decodeProtocol(data);
-	
-	load_forwarded_headers(server_request, forward_headers, headers);
 
-	const [ response, socket, head ] = await upgradeFetch(server, server_request, headers, remote);
-
-	if(id in temp_meta){
-		const meta = {
-			headers: mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {...response.headers}),
-		};
-		
-		temp_meta[id].meta = meta;
+	if(!(id in temp_meta)){
+		socket.close();
 	}
+
+	const meta = temp_meta[id];
+	
+	meta.headers = mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {...response.headers});
+
+	const [ response, socket, head ] = await upgradeFetch(server, server_request, meta.headers, meta.remote);
 
 	const response_headers = [
 		`HTTP/1.1 101 Switching Protocols`,
