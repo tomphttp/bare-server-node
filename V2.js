@@ -98,10 +98,74 @@ function load_forwarded_headers(request, forward, target){
 	}
 }
 
+const MAX_HEADER_VALUE = 2096;
+
+// ,header,id
+const split_header = /(x-bare-\w+)-(\d)/g;
+
 function read_headers(server_request, request_headers){
 	const remote = Object.setPrototypeOf({}, null);
 	const headers = Object.setPrototypeOf({}, null);
-	
+	const pass_headers = ['content-encoding', 'content-length'];
+	const pass_status = [];
+	const join_headers = {};
+
+	for(let header in request_headers){
+		if(header.startsWith('x-bare-')){
+			const value = request_headers[header];
+
+			if(value.length > MAX_HEADER_VALUE){
+				return {
+					error: {
+						code: 'INVALID_BARE_HEADER',
+						id: `request.headers.${header}`,
+						message: `Length for bare header exceeds the limit. (${value.length} > ${MAX_HEADER_VALUE})`,
+					},
+				};
+			}
+
+			const match = header.match(split_header);
+
+			if(match){
+				let [,target,id] = match;
+
+				id = parseInt(id);
+
+				if(isNaN(id) || id === 0){
+					return {
+						error: {
+							code: 'INVALID_BARE_HEADER',
+							id: `request.headers.${header}`,
+							message: `Split ID was not a number or 0.`,
+						},
+					};
+				}
+
+				if(!(target in request_headers)){
+					return {
+						error: {
+							code: 'INVALID_BARE_HEADER',
+							id: `request.headers.${header}`,
+							message: `Target header doesn't have an initial value.`,
+						},
+					};
+				}
+
+				if(!(target in join_headers)){
+					join_headers[target] = [ request_headers[target] ];
+				}
+
+				join_headers[target][id] = value;
+
+				delete request_headers[header];
+			}
+
+			for(let header in join_headers){
+				request_headers[header] = join_headers.join('');
+			}
+		}
+	}
+
 	for(let remote_prop of ['host','port','protocol','path']){
 		const header = `x-bare-${remote_prop}`;
 
@@ -110,13 +174,15 @@ function read_headers(server_request, request_headers){
 			
 			if(remote_prop === 'port'){
 				value = parseInt(value);
-				if(isNaN(value))return {
-					error: {
-						code: 'INVALID_BARE_HEADER',
-						id: `request.headers.${header}`,
-						message: `Header was not a valid integer.`,
-					},
-				};
+				if(isNaN(value)){
+					return {
+						error: {
+							code: 'INVALID_BARE_HEADER',
+							id: `request.headers.${header}`,
+							message: `Header was not a valid integer.`,
+						},
+					};
+				}
 			}
 
 			remote[remote_prop] = value;
@@ -169,6 +235,82 @@ function read_headers(server_request, request_headers){
 		};
 	}
 
+	if('x-bare-pass-headers' in request_headers){
+		let json;
+		
+		try{
+			json = JSON.parse(request_headers['x-bare-pass-headers']);
+		}catch(err){
+			return {
+				error: {
+					code: 'INVALID_BARE_HEADER',
+					id: `request.headers.x-bare-pass-headers`,
+					message: `Header contained invalid JSON. (${err.message})`,
+				},
+			};
+		}
+
+		for(let header of json){
+			if(typeof header === 'string'){
+				pass_headers.push(header.toLowerCase());
+			}else{
+				return {
+					error: {
+						code: 'INVALID_BARE_HEADER',
+						id: `request.headers.x-bare-pass-headers`,
+						message: `Array contained non-string value.`,
+					},
+				};
+			}
+		}
+	}else{
+		return {
+			error: {
+				code: 'MISSING_BARE_HEADER',
+				id: `request.headers.x-bare-pass-headers`,
+				message: `Header was not specified.`,
+			},
+		};
+	}
+
+	if('x-bare-pass-status' in request_headers){
+		let json;
+		
+		try{
+			json = JSON.parse(request_headers['x-bare-pass-status']);
+		}catch(err){
+			return {
+				error: {
+					code: 'INVALID_BARE_HEADER',
+					id: `request.headers.x-bare-pass-status`,
+					message: `Header contained invalid JSON. (${err.message})`,
+				},
+			};
+		}
+
+		for(let status of json){
+			if(typeof status === 'number'){
+				pass_status.push(status);
+			}else{
+				return {
+					error: {
+						code: 'INVALID_BARE_HEADER',
+						id: `request.headers.x-bare-pass-status`,
+						message: `Array contained non-string value.`,
+					},
+				};
+			}
+		}
+	}else{
+		return {
+			error: {
+				code: 'MISSING_BARE_HEADER',
+				id: `request.headers.x-bare-pass-headers`,
+				message: `Header was not specified.`,
+			},
+		};
+	}
+
 	if('x-bare-forward-headers' in request_headers){
 		let json;
 		
@@ -195,14 +337,14 @@ function read_headers(server_request, request_headers){
 		};
 	}
 
-	return { remote, headers };
+	return { remote, headers, pass_headers, pass_status };
 }
 
-async function v1(server, server_request){
+async function request(server, server_request){
 	const response_headers = Object.setPrototypeOf({}, null);
 
-	const { error, remote, headers } = read_headers(server_request, server_request.headers);
-	
+	const { error, remote, headers, pass_headers, pass_status } = read_headers(server_request, server_request.headers);
+
 	if(error){
 		// sent by browser, not client
 		if(server_request.method === 'OPTIONS'){
@@ -249,11 +391,9 @@ async function v1(server, server_request){
 		throw err;
 	}
 
-	for(let header in response.headers){
-		if(header === 'content-encoding' || header === 'x-content-encoding'){
-			response_headers['content-encoding'] = response.headers[header];
-		}else if(header === 'content-length'){
-			response_headers['content-length'] = response.headers[header];
+	for(let header of pass_headers){
+		if(headers in response.headers){
+			response_headers[header] = response.headers[header];
 		}
 	}
 
@@ -261,7 +401,15 @@ async function v1(server, server_request){
 	response_headers['x-bare-status'] = response.statusCode
 	response_headers['x-bare-status-text'] = response.statusMessage;
 
-	return new Response(response, 200, response_headers);
+	let status;
+
+	if(pass_status.includes(response.statusCode)){
+		status = response.statusCode;
+	}else{
+		status = 200;
+	}
+
+	return new Response(response, status, response_headers);
 }
 
 // prevent users from specifying id=__proto__ or id=constructor
@@ -275,7 +423,7 @@ setInterval(() => {
 	}
 }, 1e3);
 
-async function v1wsmeta(server, server_request){
+async function get_meta(server, server_request){
 	if(server_request.method === 'OPTIONS'){
 		return new Response(undefined, 200);
 	}
@@ -309,7 +457,7 @@ async function v1wsmeta(server, server_request){
 	return server.json(200, meta);
 }
 
-async function v1wsnewmeta(server, server_request){
+async function new_meta(server, server_request){
 	const id = (await randomBytesAsync(32)).toString('hex');
 
 	temp_meta[id] = {
@@ -319,7 +467,7 @@ async function v1wsnewmeta(server, server_request){
 	return new Response(Buffer.from(id.toString('hex')))
 }
 
-async function v1socket(server, server_request, server_socket, server_head){
+async function socket(server, server_request, server_socket, server_head){
 	if(!server_request.headers['sec-websocket-protocol']){
 		server_socket.end();
 		return;
@@ -332,12 +480,7 @@ async function v1socket(server, server_request, server_socket, server_head){
 		return;
 	}
 
-	const {
-		remote,
-		headers,
-		forward_headers,
-		id,
-	} = JSON.parse(decodeProtocol(data));
+	const id = decodeProtocol(data);
 	
 	load_forwarded_headers(server_request, forward_headers, headers);
 
@@ -391,8 +534,8 @@ async function v1socket(server, server_request, server_socket, server_head){
 }
 
 export default function register(server){
-	server.routes.set('/v1/', v1);
-	server.routes.set('/v1/ws-new-meta', v1wsnewmeta);
-	server.routes.set('/v1/ws-meta', v1wsmeta);
-	server.socket_routes.set('/v1/', v1socket);
+	server.routes.set('/v2/', request);
+	server.routes.set('/v2/ws-new-meta', new_meta);
+	server.routes.set('/v2/ws-meta', get_meta);
+	server.socket_routes.set('/v2/', socket);
 }
