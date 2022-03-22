@@ -137,7 +137,7 @@ export default class Server {
 		response.headers['access-control-allow-headers'] = '*';
 		response.headers['access-control-allow-origin'] = '*';
 		response.headers['access-control-expose-headers'] = '*';
-		response.headers['access-control-allow-method'] = '*';
+		response.headers['access-control-allow-methods'] = '*';
 		// don't send preflight on every request...
 		// instead, send preflight every 10 minutes
 		response.headers['access-control-max-age'] = '7200';
