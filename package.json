@@ -26,6 +26,7 @@
 	"type": "module",
 	"main": "Server.js",
 	"dependencies": {
-		"commander": "^9.0.0"
+		"commander": "^9.0.0",
+		"fetch-headers": "^3.0.1"
 	}
 }

@@ -148,14 +148,14 @@ export default class Server {
 			response = this.fof;
 		}
 		
-		response.headers['x-robots-tag'] = 'noindex';
-		response.headers['access-control-allow-headers'] = '*';
-		response.headers['access-control-allow-origin'] = '*';
-		response.headers['access-control-allow-methods'] = '*';
-		response.headers['access-control-expose-headers'] = '*';
+		response.headers.set('x-robots-tag', 'noindex');
+		response.headers.set('access-control-allow-headers', '*');
+		response.headers.set('access-control-allow-origin', '*');
+		response.headers.set('access-control-allow-methods', '*');
+		response.headers.set('access-control-expose-headers', '*');
 		// don't send preflight on every request...
 		// instead, send preflight every 10 minutes
-		response.headers['access-control-max-age'] = '7200';
+		response.headers.set('access-control-max-age', '7200');
 
 		response.send(server_response);
 	}

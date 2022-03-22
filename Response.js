@@ -1,32 +1,41 @@
 import { OutgoingMessage } from 'node:http';
 import Stream from 'node:stream';
+import { Headers } from 'fetch-headers';
+export { Headers } from 'fetch-headers';
 
 export default class Response {
-	headers = Object.setPrototypeOf({}, null);
-	status = 200;
 	constructor(body, status, headers){
 		this.body = body;
 		
 		if(typeof status === 'number'){
 			this.status = status;
+		}else{
+			this.status = 200;
 		}
 		
-		if(typeof headers === 'object' && headers !== undefined && headers !== null){
-			Object.assign(this.headers, headers);
+		if(headers instanceof Headers){
+			this.headers = new Headers(headers);
+		}else{
+			this.headers = new Headers();
 		}
 	}
-	send(request){
-		if(!(request instanceof OutgoingMessage))throw new TypeError('Request must be an OutgoingMessage');
+	send(response){
+		if(!(response instanceof OutgoingMessage))throw new TypeError('Request must be an OutgoingMessage');
 
-		request.writeHead(this.status, this.headers);
+
+		for(let [ header, value ] of this.headers){
+			response.setHeader(header, value);
+		}
+
+		response.writeHead(this.status);
 		
 		if(this.body instanceof Stream){
-			this.body.pipe(request);
+			this.body.pipe(response);
 		}else if(this.body instanceof Buffer){
-			request.write(this.body);
-			request.end();
+			response.write(this.body);
+			response.end();
 		}else{
-			request.end();
+			response.end();
 		}
 
 		return true;

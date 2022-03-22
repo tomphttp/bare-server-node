@@ -1,6 +1,6 @@
 import http from 'node:http';
 import https from 'node:https';
-import Response from './Response.js';
+import Response, { Headers } from './Response.js';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
 import { decodeProtocol } from './encodeProtocol.js';
 import { randomBytes } from 'node:crypto';
@@ -199,14 +199,12 @@ function read_headers(server_request, request_headers){
 }
 
 async function v1(server, server_request){
-	const response_headers = Object.setPrototypeOf({}, null);
-
 	const { error, remote, headers } = read_headers(server_request, server_request.headers);
 	
 	if(error){
 		// sent by browser, not client
 		if(server_request.method === 'OPTIONS'){
-			return new Response(undefined, 200, response_headers);
+			return new Response(undefined, 200);
 		}else{
 			return server.json(400, error);
 		}
@@ -248,18 +246,20 @@ async function v1(server, server_request){
 
 		throw err;
 	}
+	
+	const response_headers = new Headers();
 
 	for(let header in response.headers){
 		if(header === 'content-encoding' || header === 'x-content-encoding'){
-			response_headers['content-encoding'] = response.headers[header];
+			response_headers.set('content-encoding', response.headers[header]);
 		}else if(header === 'content-length'){
-			response_headers['content-length'] = response.headers[header];
+			response_headers.set('content-length', response.headers[header]);
 		}
 	}
 
-	response_headers['x-bare-headers'] = JSON.stringify(mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {...response.headers}));
-	response_headers['x-bare-status'] = response.statusCode
-	response_headers['x-bare-status-text'] = response.statusMessage;
+	response_headers.set('x-bare-headers', JSON.stringify(mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {...response.headers})));
+	response_headers.set('x-bare-status', response.statusCode);
+	response_headers.set('x-bare-status-text', response.statusMessage);
 
 	return new Response(response, 200, response_headers);
 }

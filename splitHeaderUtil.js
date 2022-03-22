@@ -86,12 +86,12 @@ export function join_headers(headers){
 
 		id = parseInt(id);
 
-		if(isNaN(id) || id === 0){
+		if(isNaN(id)){
 			return {
 				error: {
 					code: 'INVALID_BARE_HEADER',
 					id: `request.headers.${header}`,
-					message: `Split ID was not a number or 0.`,
+					message: `Split ID was not a number.`,
 				},
 			};
 		}

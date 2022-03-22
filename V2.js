@@ -1,6 +1,6 @@
 import http from 'node:http';
 import https from 'node:https';
-import Response from './Response.js';
+import Response, { Headers } from './Response.js';
 import { split_headers, join_headers } from './splitHeaderUtil.js';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
 import { decodeProtocol } from './encodeProtocol.js';
@@ -99,6 +99,8 @@ function load_forwarded_headers(request, forward, target){
 	}
 }
 
+const split_header_value = /,\s+?/g;
+
 function read_headers(server_request, request_headers){
 	const remote = Object.setPrototypeOf({}, null);
 	const headers = Object.setPrototypeOf({}, null);
@@ -106,6 +108,7 @@ function read_headers(server_request, request_headers){
 	const pass_status = [];
 
 	const { error } = join_headers(request_headers);
+
 	if(error){
 		return { error };
 	}
@@ -180,62 +183,20 @@ function read_headers(server_request, request_headers){
 	}
 
 	if('x-bare-pass-headers' in request_headers){
-		let json;
-		
-		try{
-			json = JSON.parse(request_headers['x-bare-pass-headers']);
-		}catch(err){
-			return {
-				error: {
-					code: 'INVALID_BARE_HEADER',
-					id: `request.headers.x-bare-pass-headers`,
-					message: `Header contained invalid JSON. (${err.message})`,
-				},
-			};
-		}
+		const parsed = request_headers['x-bare-pass-headers'].split(split_header_value);
 
-		for(let header of json){
-			if(typeof header === 'string'){
-				pass_headers.push(header.toLowerCase());
-			}else{
-				return {
-					error: {
-						code: 'INVALID_BARE_HEADER',
-						id: `request.headers.x-bare-pass-headers`,
-						message: `Array contained non-string value.`,
-					},
-				};
-			}
+		for(let header of parsed){
+			pass_headers.push(header.toLowerCase());
 		}
-	}else{
-		return {
-			error: {
-				code: 'MISSING_BARE_HEADER',
-				id: `request.headers.x-bare-pass-headers`,
-				message: `Header was not specified.`,
-			},
-		};
 	}
 
 	if('x-bare-pass-status' in request_headers){
-		let json;
-		
-		try{
-			json = JSON.parse(request_headers['x-bare-pass-status']);
-		}catch(err){
-			return {
-				error: {
-					code: 'INVALID_BARE_HEADER',
-					id: `request.headers.x-bare-pass-status`,
-					message: `Header contained invalid JSON. (${err.message})`,
-				},
-			};
-		}
+		const parsed = request_headers['x-bare-pass-status'].split(split_header_value);
 
-		for(let status of json){
-			if(typeof status === 'number'){
-				pass_status.push(status);
-			}else{
+		for(let value of parsed){
+			const number = parseInt(value);
+
+			if(isNaN(number)){
 				return {
 					error: {
 						code: 'INVALID_BARE_HEADER',
@@ -243,56 +204,28 @@ function read_headers(server_request, request_headers){
 						message: `Array contained non-string value.`,
 					},
 				};
+			}else{
+				pass_status.push(number);
 			}
 		}
-	}else{
-		return {
-			error: {
-				code: 'MISSING_BARE_HEADER',
-				id: `request.headers.x-bare-pass-headers`,
-				message: `Header was not specified.`,
-			},
-		};
 	}
 
 	if('x-bare-forward-headers' in request_headers){
-		let json;
-		
-		try{
-			json = JSON.parse(request_headers['x-bare-forward-headers']);
-		}catch(err){
-			return {
-				error: {
-					code: 'INVALID_BARE_HEADER',
-					id: `request.headers.x-bare-forward-headers`,
-					message: `Header contained invalid JSON. (${err.message})`,
-				},
-			};
-		}
+		const parsed = request_headers['x-bare-forward-headers'].split(split_header_value);
 
-		load_forwarded_headers(server_request, json, headers);
-	}else{
-		return {
-			error: {
-				code: 'MISSING_BARE_HEADER',
-				id: `request.headers.x-bare-forward-headers`,
-				message: `Header was not specified.`,
-			},
-		};
+		load_forwarded_headers(server_request, parsed, headers);
 	}
 
 	return { remote, headers, pass_headers, pass_status };
 }
 
 async function request(server, server_request){
-	const response_headers = Object.setPrototypeOf({}, null);
-
 	const { error, remote, headers, pass_headers, pass_status } = read_headers(server_request, server_request.headers);
 
 	if(error){
 		// sent by browser, not client
 		if(server_request.method === 'OPTIONS'){
-			return new Response(undefined, 200, response_headers);
+			return new Response(undefined, 200);
 		}else{
 			return server.json(400, error);
 		}
@@ -335,17 +268,28 @@ async function request(server, server_request){
 		throw err;
 	}
 
+	const response_headers = new Headers();
+	
 	for(let header of pass_headers){
 		if(header in response.headers){
-			response_headers[header] = response.headers[header];
+			response_headers.set(header, response.headers[header]);
 		}
 	}
 
-	response_headers['x-bare-headers'] = JSON.stringify(mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {...response.headers}));
-	response_headers['x-bare-status'] = response.statusCode
-	response_headers['x-bare-status-text'] = response.statusMessage;
+	const stringified = JSON.stringify(mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {...response.headers}));
 
-	split_headers(response_headers);
+	response_headers.set('x-bare-headers', stringified);
+	response_headers.set('x-bare-status', response.statusCode);
+	response_headers.set('x-bare-status-text', response.statusMessage);
+
+	// if(will_split_header(x_bare_headers)){
+	// for(let [header,value] of split_header(x_bare_headers, 'x-bare-headers')){
+	//  header - x-bare-headers-0
+	//	value  - ;value
+	//	response_headers.set(header, value);
+	//	}
+	// }
+	// split_headers(response_headers);
 
 	let status;
 
