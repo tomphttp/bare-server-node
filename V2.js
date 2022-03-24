@@ -112,7 +112,7 @@ function read_headers(server_request, request_headers){
 		return { error };
 	}
 
-	for(let remote_prop of ['host','port','protocol','path']){
+	for(let remote_prop of ['port','protocol','path']){
 		const header = `x-bare-${remote_prop}`;
 
 		if(request_headers.has(header)){
@@ -148,18 +148,6 @@ function read_headers(server_request, request_headers){
 		
 		try{
 			json = JSON.parse(request_headers.get('x-bare-headers'));
-
-			for(let header in json){
-				if(typeof json[header] !== 'string' && !Array.isArray(json[header])){
-					return {
-						error: {
-							code: 'INVALID_BARE_HEADER',
-							id: `bare.headers.${header}`,
-							message: `Header was not a String or Array.`,
-						},
-					};
-				}
-			}
 		}catch(err){
 			return {
 				error: {
@@ -170,7 +158,33 @@ function read_headers(server_request, request_headers){
 			};
 		}
 
-		Object.assign(headers, json);
+		for(let header in json){
+			const value = json[header];
+
+			if(typeof value === 'string'){
+				headers[header] = value;
+			}else if(Array.isArray(value)){
+				for(let val in value){
+					if(typeof val !== 'string'){
+						return {
+							error: {
+								code: 'INVALID_BARE_HEADER',
+								id: `bare.headers.${header}`,
+								message: `Header was not a String.`,
+							},
+						};
+					}
+				}
+			}else{
+				return {
+					error: {
+						code: 'INVALID_BARE_HEADER',
+						id: `bare.headers.${header}`,
+						message: `Header was not a String.`,
+					},
+				};
+			}
+		}
 	}else{
 		return {
 			error: {
@@ -215,6 +229,22 @@ function read_headers(server_request, request_headers){
 		for(let header of parsed){
 			forward_headers.push(header);
 		}
+	}
+
+	for(let header in headers){
+		if(header.toLowerCase() === 'host'){
+			remote.host = headers[header];
+		}
+	}
+
+	if(remote.host === undefined){
+		return {
+			error: {
+				code: 'MISSING_BARE_HEADER',
+				id: `bare.headers.host`,
+				message: `The host header is missing.`,
+			},
+		};
 	}
 
 	return { remote, headers, pass_headers, pass_status, forward_headers };
