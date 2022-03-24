@@ -7,7 +7,8 @@ import { decodeProtocol } from './encodeProtocol.js';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 
-const forbidden_forward = ['set-cookie'];
+const forbidden_forward = ['connection','transfer-encoding','host','connection','origin','referer'];
+const forbidden_pass = ['connection','transfer-encoding'];
 
 const randomBytesAsync = promisify(randomBytes);
 
@@ -197,14 +198,6 @@ function read_headers(server_request, request_headers){
 		};
 	}
 
-	if(request_headers.has('x-bare-pass-headers')){
-		const parsed = request_headers.get('x-bare-pass-headers').split(split_header_value);
-
-		for(let header of parsed){
-			pass_headers.push(header.toLowerCase());
-		}
-	}
-
 	if(request_headers.has('x-bare-pass-status')){
 		const parsed = request_headers.get('x-bare-pass-status').split(split_header_value);
 
@@ -225,10 +218,32 @@ function read_headers(server_request, request_headers){
 		}
 	}
 
+	if(request_headers.has('x-bare-pass-headers')){
+		const parsed = request_headers.get('x-bare-pass-headers').split(split_header_value);
+
+		for(let header of parsed){
+			header = header.toLowerCase();
+
+			if(forbidden_pass.includes(header)){
+				return {
+					error: {
+						code: 'FORBIDDEN_BARE_HEADER',
+						id: `request.headers.x-bare-forward-headers`,
+						message: `A forbidden header was passed.`,
+					},
+				};
+			}else{
+				pass_headers.push(header);
+			}
+		}
+	}
+
 	if(request_headers.has('x-bare-forward-headers')){
 		const parsed = request_headers.get('x-bare-forward-headers').split(split_header_value);
 
 		for(let header of parsed){
+			header = header.toLowerCase();
+
 			if(forbidden_forward.includes(header)){
 				return {
 					error: {
