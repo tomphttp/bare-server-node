@@ -1,3 +1,5 @@
+import { Headers } from './Response.js';
+
 /**
  * 
  * @typedef {object} ErrorResult
@@ -15,12 +17,15 @@ const split_header = /^(x-bare-\w+)-(\d+)$/;
 /**
  * 
  * @param {Headers} headers 
+ * @returns {Headers} split headers
  */
 export function split_headers(headers){
-	if(headers.has('x-bare-headers')){
-		const bare_headers = headers.get('x-bare-headers');
+	headers = new Headers(headers);
 
-		if(bare_headers.length > MAX_HEADER_VALUE){
+	if(headers.has('x-bare-headers')){
+		const value = headers.get('x-bare-headers');
+
+		if(value.length > MAX_HEADER_VALUE){
 			headers.delete('x-bare-headers');
 
 			let split = 0;
@@ -29,18 +34,21 @@ export function split_headers(headers){
 				const part = value.slice(i, i + MAX_HEADER_VALUE);
 			
 				const id = split++;
-				headers.set(`x-bare-headers-${id}`, part);
+				headers.set(`x-bare-headers-${id}`, `;${part}`);
 			}
 		}
 	}
+
+	return headers;
 }
 
 /**
  * @description Joins headers in object, according to spec
- * @param {Headers} headers 
- * @returns {ErrorResult|{}}
+ * @param {Headers} headers  joined headers
  */
 export function join_headers(headers){
+	headers = new Headers(headers);
+
 	const prefix = 'x-bare-headers';
 
 	if(headers.has(`${prefix}-0`)){
@@ -73,5 +81,5 @@ export function join_headers(headers){
 		headers.set(prefix, join.join(''))
 	}
 
-	return {};
+	return headers;
 }

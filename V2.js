@@ -7,6 +7,8 @@ import { decodeProtocol } from './encodeProtocol.js';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 
+const forbidden_forward = ['set-cookie'];
+
 const randomBytesAsync = promisify(randomBytes);
 
 // max of 4 concurrent sockets, rest is queued while busy? set max to 75
@@ -214,7 +216,7 @@ function read_headers(server_request, request_headers){
 					error: {
 						code: 'INVALID_BARE_HEADER',
 						id: `request.headers.x-bare-pass-status`,
-						message: `Array contained non-string value.`,
+						message: `Array contained non-number value.`,
 					},
 				};
 			}else{
@@ -227,7 +229,17 @@ function read_headers(server_request, request_headers){
 		const parsed = request_headers.get('x-bare-forward-headers').split(split_header_value);
 
 		for(let header of parsed){
-			forward_headers.push(header);
+			if(forbidden_forward.includes(header)){
+				return {
+					error: {
+						code: 'FORBIDDEN_BARE_HEADER',
+						id: `request.headers.x-bare-forward-headers`,
+						message: `A forbidden header was forwarded.`,
+					},
+				};
+			}else{
+				forward_headers.push(header);
+			}
 		}
 	}
 
