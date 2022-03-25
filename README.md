@@ -11,21 +11,25 @@ For more features, specify the `--help` option when running the CLI.
 ### Quickstart
 
 1. Clone the repository locally
+
 ```sh
 git clone https://github.com/tomphttp/bare-server-node.git
 ```
 
 2. Enter the folder
+
 ```sh
 cd bare-server-node
 ```
 
 3. Install dependencies
+
 ```sh
 npm install
 ```
 
 3. Start the server
+
 ```sh
 node ./app.js server --port 80 --host localhost
 ```
@@ -35,6 +39,7 @@ node ./app.js server --port 80 --host localhost
 In the cloned repository (See [quickstart](#quickstart))
 
 1. Generate OpenSSL certificates (Unless you're bringing your own)
+
 ```sh
 mkdir tls
 openssl genrsa -out tls/key.pem
@@ -43,6 +48,7 @@ openssl x509 -req -days 9999 -in tls/csr.pem -signkey tls/key.pem -out tls/cert.
 ```
 
 2. Start the server
+
 ```sh
 node ./app.js server --port 443 --host localhost --tls --cert tls/cert.pem --key tls/key.pem
 ```

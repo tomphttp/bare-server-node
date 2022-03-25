@@ -5,52 +5,52 @@ export { Headers };
 // from 'fetch-headers';
 
 export class Request {
-	constructor(body, method, path, headers){
+	constructor(body, method, path, headers) {
 		this.body = body;
 		this.method = method;
 		this.headers = new Headers(headers);
 		this.url = new URL(`http:${headers.host}${path}`);
 	}
-	get query(){
+	get query() {
 		return this.url.searchParams;
 	}
 }
 
 export class Response {
-	constructor(body, status, headers){
+	constructor(body, status, headers) {
 		this.body = body;
-		
-		if(typeof status === 'number'){
+
+		if (typeof status === 'number') {
 			this.status = status;
-		}else{
+		} else {
 			this.status = 200;
 		}
-		
-		if(headers instanceof Headers){
+
+		if (headers instanceof Headers) {
 			this.headers = new Headers(headers);
-		}else{
+		} else {
 			this.headers = new Headers();
 		}
 	}
-	send(response){
-		if(!(response instanceof OutgoingMessage))throw new TypeError('Request must be an OutgoingMessage');
+	send(response) {
+		if (!(response instanceof OutgoingMessage))
+			throw new TypeError('Request must be an OutgoingMessage');
 
-
-		for(let [ header, value ] of this.headers){
+		for (let [header, value] of this.headers) {
 			response.setHeader(header, value);
 		}
 
 		response.writeHead(this.status);
-		
-		if(this.body instanceof Stream){
+
+		if (this.body instanceof Stream) {
 			this.body.pipe(response);
-		}else if(this.body instanceof Buffer){
+		} else if (this.body instanceof Buffer) {
 			response.write(this.body);
 			response.end();
-		}else{
+		} else {
 			response.end();
 		}
 
 		return true;
 	}
-};
+}
