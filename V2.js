@@ -7,18 +7,49 @@ import { decodeProtocol } from './encodeProtocol.js';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 
-const valid_protocols = ['http:','https:','ws:','wss:'];
+const valid_protocols = ['http:', 'https:', 'ws:', 'wss:'];
 
-const forbidden_forward = ['connection', 'transfer-encoding', 'host', 'connection', 'origin', 'referer'];
-const forbidden_pass = ['vary', 'connection', 'transfer-encoding', 'access-control-allow-headers', 'access-control-allow-methods', 'access-control-expose-headers', 'access-control-max-age', 'access-cntrol-request-headers', 'access-control-request-method'];
+const forbidden_forward = [
+	'connection',
+	'transfer-encoding',
+	'host',
+	'connection',
+	'origin',
+	'referer',
+];
+const forbidden_pass = [
+	'vary',
+	'connection',
+	'transfer-encoding',
+	'access-control-allow-headers',
+	'access-control-allow-methods',
+	'access-control-expose-headers',
+	'access-control-max-age',
+	'access-cntrol-request-headers',
+	'access-control-request-method',
+];
 
 // common defaults
-const default_forward_headers = ['accept-encoding', 'accept-language', 'sec-websocket-extensions','sec-websocket-key', 'sec-websocket-version'];
-const default_pass_headers = ['content-encoding', 'content-length', 'last-modified'];
+const default_forward_headers = [
+	'accept-encoding',
+	'accept-language',
+	'sec-websocket-extensions',
+	'sec-websocket-key',
+	'sec-websocket-version',
+];
+const default_pass_headers = [
+	'content-encoding',
+	'content-length',
+	'last-modified',
+];
 const default_pass_status = [];
 
 // defaults if the client provides a cache key
-const default_cache_forward_headers = ['if-modified-since', 'if-none-match', 'cache-control'];
+const default_cache_forward_headers = [
+	'if-modified-since',
+	'if-none-match',
+	'cache-control',
+];
 const default_cache_pass_headers = ['cache-control', 'etag'];
 const default_cache_pass_status = [304];
 
@@ -91,7 +122,7 @@ async function upgradeFetch(server, server_request, request_headers, url) {
 
 	return await new Promise((resolve, reject) => {
 		outgoing.on('response', response => {
-			reject('Remote didn\'t upgrade the WebSocket');
+			reject("Remote didn't upgrade the WebSocket");
 		});
 
 		outgoing.on('upgrade', (...args) => {
@@ -106,7 +137,7 @@ async function upgradeFetch(server, server_request, request_headers, url) {
 
 function load_forwarded_headers(forward, target, client_request) {
 	for (let header of forward) {
-		if(client_request.headers.has(header)){
+		if (client_request.headers.has(header)) {
 			target[header] = client_request.headers.get(header);
 		}
 	}
@@ -115,9 +146,9 @@ function load_forwarded_headers(forward, target, client_request) {
 const split_header_value = /,\s*/g;
 
 /**
- * 
- * @param {import('./AbstractMessage.js').Request} server_request 
- * @returns 
+ *
+ * @param {import('./AbstractMessage.js').Request} server_request
+ * @returns
  */
 function read_headers(server_request) {
 	const remote = Object.setPrototypeOf({}, null);
@@ -129,7 +160,7 @@ function read_headers(server_request) {
 	// should be unique
 	const cache = server_request.url.searchParams.has('cache');
 
-	if(cache){
+	if (cache) {
 		pass_headers.push(...default_cache_pass_headers);
 		pass_status.push(...default_cache_pass_status);
 		forward_headers.push(...default_cache_forward_headers);
@@ -149,10 +180,10 @@ function read_headers(server_request) {
 		if (headers.has(header)) {
 			let value = headers.get(header);
 
-			switch(remote_prop){
-				case'port':
+			switch (remote_prop) {
+				case 'port':
 					value = parseInt(value);
-					if(isNaN(value)){
+					if (isNaN(value)) {
 						return {
 							error: {
 								code: 'INVALID_BARE_HEADER',
@@ -162,8 +193,8 @@ function read_headers(server_request) {
 						};
 					}
 					break;
-				case'protocol':
-					if(!valid_protocols.includes(value)){
+				case 'protocol':
+					if (!valid_protocols.includes(value)) {
 						return {
 							error: {
 								code: 'INVALID_BARE_HEADER',
@@ -201,11 +232,11 @@ function read_headers(server_request) {
 				},
 			};
 		}
-		
+
 		for (let header in json) {
 			const value = json[header];
 
-			if(header.toLowerCase() === 'host' && value !== remote.host){
+			if (header.toLowerCase() === 'host' && value !== remote.host) {
 				return {
 					error: {
 						code: 'INVALID_BARE_HEADER',
@@ -296,7 +327,9 @@ function read_headers(server_request) {
 	}
 
 	if (headers.has('x-bare-forward-headers')) {
-		const parsed = headers.get('x-bare-forward-headers').split(split_header_value);
+		const parsed = headers
+			.get('x-bare-forward-headers')
+			.split(split_header_value);
 
 		for (let header of parsed) {
 			header = header.toLowerCase();
@@ -315,11 +348,18 @@ function read_headers(server_request) {
 		}
 	}
 
-	return { remote, headers: send_headers, pass_headers, pass_status, forward_headers };
+	return {
+		remote,
+		headers: send_headers,
+		pass_headers,
+		pass_status,
+		forward_headers,
+	};
 }
 
 async function request(server, server_request) {
-	const { error, remote, headers, pass_headers, pass_status, forward_headers } = read_headers(server_request);
+	const { error, remote, headers, pass_headers, pass_status, forward_headers } =
+		read_headers(server_request);
 
 	if (error) {
 		// sent by browser, not client
@@ -379,7 +419,14 @@ async function request(server, server_request) {
 
 	response_headers.set('x-bare-status', response.statusCode);
 	response_headers.set('x-bare-status-text', response.statusMessage);
-	response_headers.set('x-bare-headers', JSON.stringify(mapHeadersFromArray(rawHeaderNames(response.rawHeaders), { ...response.headers })));
+	response_headers.set(
+		'x-bare-headers',
+		JSON.stringify(
+			mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {
+				...response.headers,
+			})
+		)
+	);
 
 	split_headers(response_headers);
 
@@ -406,9 +453,9 @@ setInterval(() => {
 }, 1e3);
 
 /**
- * 
- * @param {import('./Server.js').default} server 
- * @param {import('./AbstractMessage.js').Request} server_request 
+ *
+ * @param {import('./Server.js').default} server
+ * @param {import('./AbstractMessage.js').Request} server_request
  */
 async function get_meta(server, server_request) {
 	if (server_request.method === 'OPTIONS') {
@@ -449,7 +496,8 @@ async function get_meta(server, server_request) {
 }
 
 async function new_meta(server, server_request) {
-	const { error, remote, headers, forward_headers } = read_headers(server_request);
+	const { error, remote, headers, forward_headers } =
+		read_headers(server_request);
 
 	if (error) {
 		// sent by browser, not client
@@ -470,7 +518,7 @@ async function new_meta(server, server_request) {
 		response: {},
 	};
 
-	return new Response(Buffer.from(id))
+	return new Response(Buffer.from(id));
 }
 
 async function socket(server, client_request, client_socket, client_head) {
@@ -492,10 +540,18 @@ async function socket(server, client_request, client_socket, client_head) {
 
 	load_forwarded_headers(meta.forward_headers, meta.headers, client_request);
 
-	const [remote_response, remote_socket, head] = await upgradeFetch(server, client_request, meta.headers, meta.remote);
+	const [remote_response, remote_socket, head] = await upgradeFetch(
+		server,
+		client_request,
+		meta.headers,
+		meta.remote
+	);
 	const remote_headers = new Headers(remote_response.headers);
 
-	meta.response.headers = mapHeadersFromArray(rawHeaderNames(remote_response.rawHeaders), { ...remote_response.headers });
+	meta.response.headers = mapHeadersFromArray(
+		rawHeaderNames(remote_response.rawHeaders),
+		{ ...remote_response.headers }
+	);
 	meta.response.status = remote_response.statusCode;
 	meta.response.status_text = remote_response.statusMessage;
 
@@ -507,11 +563,17 @@ async function socket(server, client_request, client_socket, client_head) {
 	];
 
 	if (remote_headers.has('sec-websocket-extensions')) {
-		response_headers.push(`Sec-WebSocket-Extensions: ${remote_headers.get('sec-websocket-extensions')}`);
+		response_headers.push(
+			`Sec-WebSocket-Extensions: ${remote_headers.get(
+				'sec-websocket-extensions'
+			)}`
+		);
 	}
 
 	if (remote_headers.has('sec-websocket-accept')) {
-		response_headers.push(`Sec-WebSocket-Accept: ${remote_headers.get('sec-websocket-accept')}`);
+		response_headers.push(
+			`Sec-WebSocket-Accept: ${remote_headers.get('sec-websocket-accept')}`
+		);
 	}
 
 	client_socket.write(response_headers.concat('', '').join('\r\n'));
