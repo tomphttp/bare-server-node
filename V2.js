@@ -104,10 +104,10 @@ async function upgradeFetch(server, server_request, request_headers, url) {
 	});
 }
 
-function load_forwarded_headers(forward, target, request_headers) {
+function load_forwarded_headers(forward, target, client_request) {
 	for (let header of forward) {
-		if(request_headers.has(header)){
-			target[header] = request_headers.get(header);
+		if(client_request.headers.has(header)){
+			target[header] = client_request.headers.get(header);
 		}
 	}
 }
@@ -330,7 +330,7 @@ async function request(server, server_request) {
 		}
 	}
 
-	load_forwarded_headers(forward_headers, headers, server_request.headers);
+	load_forwarded_headers(forward_headers, headers, server_request);
 
 	let response;
 
@@ -490,7 +490,7 @@ async function socket(server, client_request, client_socket, client_head) {
 
 	const meta = temp_meta[id];
 
-	load_forwarded_headers(meta.forward_headers, meta.headers, client_request.headers);
+	load_forwarded_headers(meta.forward_headers, meta.headers, client_request);
 
 	const [remote_response, remote_socket, head] = await upgradeFetch(server, client_request, meta.headers, meta.remote);
 	const remote_headers = new Headers(remote_response.headers);

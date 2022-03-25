@@ -6,6 +6,8 @@ import { decodeProtocol } from './encodeProtocol.js';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 
+const valid_protocols = ['http:','https:','ws:','wss:'];
+
 const randomBytesAsync = promisify(randomBytes);
 
 // max of 4 concurrent sockets, rest is queued while busy? set max to 75
@@ -39,7 +41,7 @@ async function fetch(server, server_request, request_headers, url){
 		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 	}
 	
-	server_request.pipe(outgoing);
+	server_request.body.pipe(outgoing);
 	
 	return await new Promise((resolve, reject) => {
 		outgoing.on('response', resolve);
@@ -85,38 +87,48 @@ async function upgradeFetch(server, server_request, request_headers, url){
 	});
 }
 
-function load_forwarded_headers(request, forward, target){
-	const raw = rawHeaderNames(request.rawHeaders);
-
-	for(let header of forward){
-		for(let cap of raw){
-			if(cap.toLowerCase() == header){
-				// header exists and real capitalization was found
-				target[cap] = request.headers[header];
-			}
+function load_forwarded_headers(forward, target, client_request) {
+	for (let header of forward) {
+		if(client_request.headers.has(header)){
+			target[header] = client_request.headers.get(header);
 		}
 	}
 }
 
-function read_headers(server_request, request_headers){
+function read_headers(server_request){
 	const remote = Object.setPrototypeOf({}, null);
 	const headers = Object.setPrototypeOf({}, null);
 	
 	for(let remote_prop of ['host','port','protocol','path']){
 		const header = `x-bare-${remote_prop}`;
 
-		if(header in request_headers){
-			let value = request_headers[header];
+		if(server_request.headers.has(header)){
+			let value = server_request.headers.get(header);
 			
-			if(remote_prop === 'port'){
-				value = parseInt(value);
-				if(isNaN(value))return {
-					error: {
-						code: 'INVALID_BARE_HEADER',
-						id: `request.headers.${header}`,
-						message: `Header was not a valid integer.`,
-					},
-				};
+			switch(remote_prop){
+				case'port':
+					value = parseInt(value);
+					if(isNaN(value)){
+						return {
+							error: {
+								code: 'INVALID_BARE_HEADER',
+								id: `request.headers.${header}`,
+								message: `Header was not a valid integer.`,
+							},
+						};
+					}
+					break;
+				case'protocol':
+					if(!valid_protocols.includes(value)){
+						return {
+							error: {
+								code: 'INVALID_BARE_HEADER',
+								id: `request.headers.${header}`,
+								message: `Header was invalid`,
+							},
+						};
+					}
+					break;
 			}
 
 			remote[remote_prop] = value;
@@ -131,11 +143,11 @@ function read_headers(server_request, request_headers){
 		}
 	}
 	
-	if('x-bare-headers' in request_headers){
+	if(server_request.headers.has('x-bare-headers')){
 		let json;
 		
 		try{
-			json = JSON.parse(request_headers['x-bare-headers']);
+			json = JSON.parse(server_request.headers.get('x-bare-headers'));
 
 			for(let header in json){
 				if(typeof json[header] !== 'string' && !Array.isArray(json[header])){
@@ -169,11 +181,11 @@ function read_headers(server_request, request_headers){
 		};
 	}
 
-	if('x-bare-forward-headers' in request_headers){
+	if(server_request.headers.has('x-bare-forward-headers')){
 		let json;
 		
 		try{
-			json = JSON.parse(request_headers['x-bare-forward-headers']);
+			json = JSON.parse(server_request.headers.get('x-bare-forward-headers'));
 		}catch(err){
 			return {
 				error: {
@@ -184,7 +196,7 @@ function read_headers(server_request, request_headers){
 			};
 		}
 
-		load_forwarded_headers(server_request, json, headers);
+		load_forwarded_headers(json, headers, server_request);
 	}else{
 		return {
 			error: {
@@ -199,7 +211,7 @@ function read_headers(server_request, request_headers){
 }
 
 async function v1(server, server_request){
-	const { error, remote, headers } = read_headers(server_request, server_request.headers);
+	const { error, remote, headers } = read_headers(server_request);
 	
 	if(error){
 		// sent by browser, not client
@@ -280,7 +292,7 @@ async function v1wsmeta(server, server_request){
 		return new Response(undefined, 200);
 	}
 	
-	if(!('x-bare-id' in server_request.headers)){
+	if(!server_request.headers.has('x-bare-id')){
 		return server.json(400, {
 			code: 'MISSING_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
@@ -288,7 +300,7 @@ async function v1wsmeta(server, server_request){
 		});
 	}
 
-	const id = server_request.headers['x-bare-id'];
+	const id = server_request.headers.get('x-bare-id');
 
 	if(!(id in temp_meta)){
 		return server.json(400, {
@@ -320,12 +332,12 @@ async function v1wsnewmeta(server, server_request){
 }
 
 async function v1socket(server, server_request, server_socket, server_head){
-	if(!server_request.headers['sec-websocket-protocol']){
+	if(!server_request.headers.has('sec-websocket-protocol')){
 		server_socket.end();
 		return;
 	}
 
-	const [ first_protocol, data ] = server_request.headers['sec-websocket-protocol'].split(/,\s*/g);
+	const [ first_protocol, data ] = server_request.headers.get('sec-websocket-protocol').split(/,\s*/g);
 	
 	if(first_protocol !== 'bare'){
 		server_socket.end();
@@ -339,8 +351,8 @@ async function v1socket(server, server_request, server_socket, server_head){
 		id,
 	} = JSON.parse(decodeProtocol(data));
 	
-	load_forwarded_headers(server_request, forward_headers, headers);
-
+	load_forwarded_headers(forward_headers, headers, server_request);
+	
 	const [ response, socket, head ] = await upgradeFetch(server, server_request, headers, remote);
 
 	if(id in temp_meta){
