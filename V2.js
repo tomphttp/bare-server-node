@@ -10,13 +10,18 @@ import { promisify } from 'node:util';
 const forbidden_forward = ['connection', 'transfer-encoding', 'host', 'connection', 'origin', 'referer'];
 const forbidden_pass = ['vary', 'connection', 'transfer-encoding', 'access-control-allow-headers', 'access-control-allow-methods', 'access-control-expose-headers', 'access-control-max-age', 'access-cntrol-request-headers', 'access-control-request-method'];
 
-const default_forward = ['accept-encoding', 'accept-language', 'if-modified-since', 'if-none-match', 'cache-control'];
-const default_pass_headers = ['content-encoding', 'content-length', 'cache-control', 'etag'];
-const default_pass_status = [304];
+// common defaults
+const default_forward_headers = ['accept-encoding', 'accept-language'];
+const default_pass_headers = ['content-encoding', 'content-length'];
+const default_pass_status = [];
 
-const cache_default_pass_headers = '';
+// defaults if the client provides a cache key
+const default_cache_forward_headers = ['if-modified-since', 'if-none-match', 'cache-control'];
+const default_cache_pass_headers = ['cache-control', 'etag'];
+const default_cache_pass_status = [304];
 
-const vary_headers = ['x-bare-protocol', 'x-bare-host', 'x-bare-port', 'x-bare-path', 'x-bare-headers'];
+// vary isnt respected
+// const vary_headers = ['x-bare-protocol', 'x-bare-host', 'x-bare-port', 'x-bare-path', 'x-bare-headers'];
 
 const randomBytesAsync = promisify(randomBytes);
 
@@ -107,12 +112,26 @@ function load_forwarded_headers(forward, target, request_headers) {
 
 const split_header_value = /,\s*/g;
 
+/**
+ * 
+ * @param {import('./AbstractMessage.js').Request} server_request 
+ * @returns 
+ */
 function read_headers(server_request) {
 	const remote = Object.setPrototypeOf({}, null);
 	const send_headers = Object.setPrototypeOf({}, null);
 	const pass_headers = [...default_pass_headers];
 	const pass_status = [...default_pass_status];
-	const forward_headers = [...default_forward];
+	const forward_headers = [...default_forward_headers];
+
+	// should be unique
+	const cache = server_request.url.searchParams.has('cache');
+
+	if(cache){
+		pass_headers.push(...default_cache_pass_headers);
+		pass_status.push(...default_cache_pass_status);
+		forward_headers.push(...default_cache_forward_headers);
+	}
 
 	const headers = join_headers(server_request.headers);
 
