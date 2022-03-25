@@ -14,7 +14,7 @@ const forbidden_pass = ['vary', 'connection', 'transfer-encoding', 'access-contr
 
 // common defaults
 const default_forward_headers = ['accept-encoding', 'accept-language'];
-const default_pass_headers = ['content-encoding', 'content-length'];
+const default_pass_headers = ['content-encoding', 'content-length', 'last-modified'];
 const default_pass_status = [];
 
 // defaults if the client provides a cache key
