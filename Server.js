@@ -1,6 +1,6 @@
 import register_v1 from './V1.js';
 import register_v2 from './V2.js';
-import Response from './Response.js';
+import { Request, Response } from './AbstractMessage.js';
 
 export default class Server {
 	prefix = '/';
@@ -98,28 +98,22 @@ export default class Server {
 			socket.end();
 		}
 	}
+	/**
+	 * 
+	 * @param {import('node:http').ClientRequest} server_request 
+	 * @param {import('node:http').ServerResponse} server_response 
+	 */
 	async request(server_request, server_response){
-		let queryi = server_request.url.indexOf('?');
+		const request = new Request(server_request, server_request.method, server_request.url, server_request.headers);
 		
-		let path;
-		let query;
-
-		if(queryi === -1){
-			path = server_request.url;
-			query = '';
-		}else{
-			path = server_request.url.slice(0, queryi)
-			query = server_request.url.slice(queryi);
-		}
-
-		const service = path.slice(this.directory.length - 1);
+		const service = request.url.pathname.slice(this.directory.length - 1);
 		let response;
 
 		if(this.routes.has(service)){
 			const call = this.routes.get(service);
 
 			try{
-				response = await call(this, server_request);
+				response = await call(this, request);
 			}catch(error){
 				this.error(error);
 				

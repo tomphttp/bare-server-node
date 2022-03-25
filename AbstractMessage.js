@@ -1,9 +1,22 @@
 import { OutgoingMessage } from 'node:http';
 import Stream from 'node:stream';
 import { Headers } from 'fetch-headers';
-export { Headers } from 'fetch-headers';
+export { Headers };
+// from 'fetch-headers';
 
-export default class Response {
+export class Request {
+	constructor(body, method, path, headers){
+		this.body = body;
+		this.method = method;
+		this.headers = new Headers(headers);
+		this.url = new URL(`http:${headers.host}${path}`);
+	}
+	get query(){
+		return this.url.searchParams;
+	}
+}
+
+export class Response {
 	constructor(body, status, headers){
 		this.body = body;
 		

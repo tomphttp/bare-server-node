@@ -1,6 +1,6 @@
 import http from 'node:http';
 import https from 'node:https';
-import Response, { Headers } from './Response.js';
+import { Response, Headers } from './AbstractMessage.js';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
 import { decodeProtocol } from './encodeProtocol.js';
 import { randomBytes } from 'node:crypto';

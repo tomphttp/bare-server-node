@@ -1,4 +1,4 @@
-import { Headers } from './Response.js';
+import { Headers } from './AbstractMessage.js';
 
 /**
  * 
