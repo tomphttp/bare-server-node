@@ -82,20 +82,22 @@ export default class Server {
 			developer: this.project,
 		};
 	}
-	async upgrade(request, socket, head){
-		const service = request.url.slice(this.directory.length - 1);
+	async upgrade(client_request, client_socket, client_head){
+		const request = new Request(client_request, client_request.method, client_request.url, client_request.headers);
+		
+		const service = request.url.pathname.slice(this.directory.length - 1);
 		
 		if(this.routes.has(service)){
 			const call = this.socket_routes.get(service);
 
 			try{
-				await call(this, request, socket, head);
+				await call(this, request, client_socket, client_head);
 			}catch(error){
 				this.error(error);
-				socket.end();
+				client_socket.end();
 			}
 		}else{
-			socket.end();
+			client_socket.end();
 		}
 	}
 	/**
@@ -103,8 +105,8 @@ export default class Server {
 	 * @param {import('node:http').ClientRequest} server_request 
 	 * @param {import('node:http').ServerResponse} server_response 
 	 */
-	async request(server_request, server_response){
-		const request = new Request(server_request, server_request.method, server_request.url, server_request.headers);
+	async request(client_request, server_response){
+		const request = new Request(client_request, client_request.method, client_request.url, client_request.headers);
 		
 		const service = request.url.pathname.slice(this.directory.length - 1);
 		let response;

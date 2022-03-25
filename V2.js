@@ -7,6 +7,8 @@ import { decodeProtocol } from './encodeProtocol.js';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 
+const valid_protocols = ['http:','https:','ws:','wss:'];
+
 const forbidden_forward = ['connection', 'transfer-encoding', 'host', 'connection', 'origin', 'referer'];
 const forbidden_pass = ['vary', 'connection', 'transfer-encoding', 'access-control-allow-headers', 'access-control-allow-methods', 'access-control-expose-headers', 'access-control-max-age', 'access-cntrol-request-headers', 'access-control-request-method'];
 
@@ -147,17 +149,30 @@ function read_headers(server_request) {
 		if (headers.has(header)) {
 			let value = headers.get(header);
 
-			if (remote_prop === 'port') {
-				value = parseInt(value);
-				if (isNaN(value)) {
-					return {
-						error: {
-							code: 'INVALID_BARE_HEADER',
-							id: `request.headers.${header}`,
-							message: `Header was not a valid integer.`,
-						},
-					};
-				}
+			switch(remote_prop){
+				case'port':
+					value = parseInt(value);
+					if(isNaN(value)){
+						return {
+							error: {
+								code: 'INVALID_BARE_HEADER',
+								id: `request.headers.${header}`,
+								message: `Header was not a valid integer.`,
+							},
+						};
+					}
+					break;
+				case'protocol':
+					if(!valid_protocols.includes(value)){
+						return {
+							error: {
+								code: 'INVALID_BARE_HEADER',
+								id: `request.headers.${header}`,
+								message: `Header was invalid`,
+							},
+						};
+					}
+					break;
 			}
 
 			remote[remote_prop] = value;
@@ -390,6 +405,11 @@ setInterval(() => {
 	}
 }, 1e3);
 
+/**
+ * 
+ * @param {import('./Server.js').default} server 
+ * @param {import('./AbstractMessage.js').Request} server_request 
+ */
 async function get_meta(server, server_request) {
 	if (server_request.method === 'OPTIONS') {
 		return new Response(undefined, 200);
@@ -417,9 +437,15 @@ async function get_meta(server, server_request) {
 
 	delete temp_meta[id];
 
-	return server.json(200, {
-		headers: meta.remote_headers,
-	});
+	const response_headers = new Headers();
+
+	response_headers.set('x-bare-status', meta.response.status);
+	response_headers.set('x-bare-status-text', meta.response.status_text);
+	response_headers.set('x-bare-headers', JSON.stringify(meta.response.headers));
+
+	split_headers(response_headers);
+
+	return new Response(undefined, 200, response_headers);
 }
 
 async function new_meta(server, server_request) {
@@ -441,18 +467,19 @@ async function new_meta(server, server_request) {
 		remote,
 		headers,
 		forward_headers,
+		response: {},
 	};
 
 	return new Response(Buffer.from(id))
 }
 
-async function socket(server, server_request, server_socket, server_head) {
-	if (!server_request.headers.has('sec-websocket-protocol')) {
+async function socket(server, client_request, client_socket, client_head) {
+	if (!client_request.headers.has('sec-websocket-protocol')) {
 		server_socket.end();
 		return;
 	}
 
-	const protocol = server_request.headers.get('sec-websocket-protocol');
+	const protocol = client_request.headers.get('sec-websocket-protocol');
 
 	const id = decodeProtocol(protocol);
 
@@ -463,12 +490,14 @@ async function socket(server, server_request, server_socket, server_head) {
 
 	const meta = temp_meta[id];
 
-	load_forwarded_headers(meta.forward_headers, meta.headers, rawHeaderNames(server_request.rawHeaders), server_request.headers);
+	load_forwarded_headers(meta.forward_headers, meta.headers, client_request.headers);
 
-	const [remote_response, remote_socket, head] = await upgradeFetch(server, server_request, meta.headers, meta.remote);
+	const [remote_response, remote_socket, head] = await upgradeFetch(server, client_request, meta.headers, meta.remote);
 	const remote_headers = new Headers(remote_response.headers);
 
-	meta.remote_headers = mapHeadersFromArray(rawHeaderNames(remote_response.rawHeaders), { ...remote_response.headers });
+	meta.response.headers = mapHeadersFromArray(rawHeaderNames(remote_response.rawHeaders), { ...remote_response.headers });
+	meta.response.status = remote_response.statusCode;
+	meta.response.status_text = remote_response.statusMessage;
 
 	const response_headers = [
 		`HTTP/1.1 101 Switching Protocols`,
@@ -485,31 +514,31 @@ async function socket(server, server_request, server_socket, server_head) {
 		response_headers.push(`Sec-WebSocket-Accept: ${remote_headers.get('sec-websocket-accept')}`);
 	}
 
-	server_socket.write(response_headers.concat('', '').join('\r\n'));
-	server_socket.write(head);
+	client_socket.write(response_headers.concat('', '').join('\r\n'));
+	client_socket.write(head);
 
 	remote_socket.on('close', () => {
 		// console.log('Remote closed');
-		server_socket.end();
+		client_socket.end();
 	});
 
-	server_socket.on('close', () => {
+	client_socket.on('close', () => {
 		// console.log('Serving closed');
 		remote_socket.end();
 	});
 
 	remote_socket.on('error', err => {
 		server.error('Remote socket error:', err);
-		server_socket.end();
+		client_socket.end();
 	});
 
-	server_socket.on('error', err => {
+	client_socket.on('error', err => {
 		server.error('Serving socket error:', err);
 		remote_socket.end();
 	});
 
-	remote_socket.pipe(server_socket);
-	server_socket.pipe(remote_socket);
+	remote_socket.pipe(client_socket);
+	client_socket.pipe(remote_socket);
 }
 
 export default function register(server) {
