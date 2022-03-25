@@ -13,7 +13,7 @@ const forbidden_forward = ['connection', 'transfer-encoding', 'host', 'connectio
 const forbidden_pass = ['vary', 'connection', 'transfer-encoding', 'access-control-allow-headers', 'access-control-allow-methods', 'access-control-expose-headers', 'access-control-max-age', 'access-cntrol-request-headers', 'access-control-request-method'];
 
 // common defaults
-const default_forward_headers = ['accept-encoding', 'accept-language'];
+const default_forward_headers = ['accept-encoding', 'accept-language', 'sec-websocket-extensions','sec-websocket-key', 'sec-websocket-version'];
 const default_pass_headers = ['content-encoding', 'content-length', 'last-modified'];
 const default_pass_status = [];
 
