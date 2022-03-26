@@ -428,8 +428,6 @@ async function request(server, server_request) {
 		)
 	);
 
-	split_headers(response_headers);
-
 	let status;
 
 	if (pass_status.includes(response.statusCode)) {
@@ -438,7 +436,7 @@ async function request(server, server_request) {
 		status = 200;
 	}
 
-	return new Response(response, status, response_headers);
+	return new Response(response, status, split_headers(response_headers));
 }
 
 // prevent users from specifying id=__proto__ or id=constructor
@@ -490,9 +488,7 @@ async function get_meta(server, server_request) {
 	response_headers.set('x-bare-status-text', meta.response.status_text);
 	response_headers.set('x-bare-headers', JSON.stringify(meta.response.headers));
 
-	split_headers(response_headers);
-
-	return new Response(undefined, 200, response_headers);
+	return new Response(undefined, 200, split_headers(response_headers));
 }
 
 async function new_meta(server, server_request) {
