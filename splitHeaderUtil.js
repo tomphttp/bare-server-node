@@ -1,3 +1,5 @@
+// import Headers in NodeJS environments
+// this line can safely be removed in browser environments
 import { Headers } from './AbstractMessage.js';
 
 /**
