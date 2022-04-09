@@ -3,7 +3,6 @@ import https from 'node:https';
 import { Response, Headers } from './AbstractMessage.js';
 import { split_headers, join_headers } from './splitHeaderUtil.js';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
-import { decodeProtocol } from './encodeProtocol.js';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 
@@ -523,9 +522,7 @@ async function socket(server, client_request, client_socket, client_head) {
 		return;
 	}
 
-	const protocol = client_request.headers.get('sec-websocket-protocol');
-
-	const id = decodeProtocol(protocol);
+	const id = client_request.headers.get('sec-websocket-protocol');
 
 	if (!(id in temp_meta)) {
 		server_socket.end();
