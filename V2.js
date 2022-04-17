@@ -573,12 +573,10 @@ async function socket(server, client_request, client_socket, client_head) {
 	client_socket.write(head);
 
 	remote_socket.on('close', () => {
-		// console.log('Remote closed');
 		client_socket.end();
 	});
 
 	client_socket.on('close', () => {
-		// console.log('Serving closed');
 		remote_socket.end();
 	});
 
