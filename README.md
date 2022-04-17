@@ -33,22 +33,3 @@ npm install
 ```sh
 node ./app.js server --port 80 --host localhost
 ```
-
-### TLS
-
-In the cloned repository (See [quickstart](#quickstart))
-
-1. Generate OpenSSL certificates (Unless you're bringing your own)
-
-```sh
-mkdir tls
-openssl genrsa -out tls/key.pem
-openssl req -new -key tls/key.pem -out tls/csr.pem
-openssl x509 -req -days 9999 -in tls/csr.pem -signkey tls/key.pem -out tls/cert.pem
-```
-
-2. Start the server
-
-```sh
-node ./app.js server --port 443 --host localhost --tls --cert tls/cert.pem --key tls/key.pem
-```

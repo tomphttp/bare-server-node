@@ -19,8 +19,7 @@
 	"keywords": [
 		"proxy",
 		"tomp",
-		"tomphttp",
-		"sys32"
+		"tomphttp"
 	],
 	"license": "GPL-3.0",
 	"type": "module",
