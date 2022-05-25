@@ -1,7 +1,7 @@
 {
 	"name": "bare-server-node",
-	"description": "Back.",
-	"version": "0.0.1",
+	"description": "The Bare Server implementation in NodeJS.",
+	"version": "0.0.2",
 	"homepage": "https://github.com/tomphttp",
 	"bugs": {
 		"url": "https://github.com/tomphttp/bare-server-node/issues",
@@ -26,6 +26,7 @@
 	"main": "Server.js",
 	"dependencies": {
 		"commander": "^9.0.0",
+		"dotenv": "^16.0.1",
 		"fetch-headers": "^3.0.1"
 	},
 	"devDependencies": {
