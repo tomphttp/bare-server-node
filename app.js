@@ -1,4 +1,4 @@
-import { Command, Option } from 'commander';
+import { Command } from 'commander';
 import { config } from 'dotenv';
 import { Server as HTTPServer } from 'node:http';
 import BareServer from './Server.js';
