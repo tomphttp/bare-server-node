@@ -26,11 +26,7 @@ export class Response {
 			this.status = 200;
 		}
 
-		if (headers instanceof Headers) {
-			this.headers = new Headers(headers);
-		} else {
-			this.headers = new Headers();
-		}
+		this.headers = new Headers(headers);
 	}
 	send(response) {
 		if (!(response instanceof OutgoingMessage))
