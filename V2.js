@@ -235,16 +235,6 @@ function read_headers(server_request) {
 		for (let header in json) {
 			const value = json[header];
 
-			if (header.toLowerCase() === 'host' && value !== remote.host) {
-				return {
-					error: {
-						code: 'INVALID_BARE_HEADER',
-						id: `bare.headers.${header}`,
-						message: `Host was not equal to x-bare-host`,
-					},
-				};
-			}
-
 			if (typeof value === 'string') {
 				send_headers[header] = value;
 			} else if (Array.isArray(value)) {
