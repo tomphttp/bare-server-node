@@ -406,23 +406,25 @@ async function request(server, server_request) {
 		}
 	}
 
-	response_headers.set('x-bare-status', response.statusCode);
-	response_headers.set('x-bare-status-text', response.statusMessage);
-	response_headers.set(
-		'x-bare-headers',
-		JSON.stringify(
-			mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {
-				...response.headers,
-			})
-		)
-	);
-
 	let status;
 
 	if (pass_status.includes(response.statusCode)) {
 		status = response.statusCode;
 	} else {
 		status = 200;
+	}
+
+	if (!default_cache_pass_status.includes(status)) {
+		response_headers.set('x-bare-status', response.statusCode);
+		response_headers.set('x-bare-status-text', response.statusMessage);
+		response_headers.set(
+			'x-bare-headers',
+			JSON.stringify(
+				mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {
+					...response.headers,
+				})
+			)
+		);
 	}
 
 	return new Response(response, status, split_headers(response_headers));
