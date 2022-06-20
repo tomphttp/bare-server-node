@@ -80,7 +80,7 @@ export default class Server {
 			memoryUsage:
 				Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
 			maintainer: this.maintainer,
-			developer: this.project,
+			project: this.project,
 		};
 	}
 	async upgrade(client_request, client_socket, client_head) {
