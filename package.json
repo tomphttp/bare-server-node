@@ -23,13 +23,17 @@
 	],
 	"license": "GPL-3.0",
 	"type": "module",
-	"main": "Server.js",
+	"main": "src/Server.js",
+	"bin": "scripts/start.js",
 	"dependencies": {
 		"commander": "^9.0.0",
 		"dotenv": "^16.0.1",
-		"fetch-headers": "^3.0.1"
+		"fetch-headers": "^3.0.1",
+		"http-errors": "^2.0.0"
 	},
 	"devDependencies": {
+		"eslint": "^8.18.0",
+		"eslint-config-prettier": "^8.5.0",
 		"husky": "^7.0.4",
 		"lint-staged": "^12.3.7",
 		"prettier": "2.6.0"
@@ -38,6 +42,7 @@
 		"*.{js,json}": "prettier --write"
 	},
 	"scripts": {
+		"start": "node scripts/start.js",
 		"prepare": "husky install"
 	}
 }

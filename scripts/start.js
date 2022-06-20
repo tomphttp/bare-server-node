@@ -1,7 +1,8 @@
+#!/usr/bin/env node
 import { Command } from 'commander';
 import { config } from 'dotenv';
 import { Server as HTTPServer } from 'node:http';
-import BareServer from './Server.js';
+import BareServer from '../src/Server.js';
 
 config();
 
@@ -31,15 +32,20 @@ program
 		console.info('Created HTTP server.');
 
 		http.on('request', (req, res) => {
-			if (bare.route_request(req, res)) return;
-
-			res.writeHead(400);
-			res.send('Not found');
+			if (bare.shouldRoute(req)) {
+				bare.routeRequest(req, res);
+			} else {
+				res.writeHead(400);
+				res.send('Not found.');
+			}
 		});
 
 		http.on('upgrade', (req, socket, head) => {
-			if (bare.route_upgrade(req, socket, head)) return;
-			socket.end();
+			if (bare.shouldRoute(req)) {
+				bare.routeUpgrade(req, socket, head);
+			} else {
+				socket.end();
+			}
 		});
 
 		http.on('listening', () => {

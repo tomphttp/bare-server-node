@@ -1,30 +1,142 @@
-import register_v1 from './V1.js';
-import register_v2 from './V2.js';
-import { Request, Response } from './AbstractMessage.js';
+import registerV1 from './V1.js';
+import registerV2 from './V2.js';
+import { Request, Response, writeResponse } from './AbstractMessage.js';
+import http from 'http';
+import https from 'https';
+import createHttpError from 'http-errors';
+
+/**
+ * @typedef {Object.<string, string|string[]>} BareHeaders
+ */
+
+/**
+ *
+ * Bare Error
+ */
+export class BareError extends Error {
+	/**
+	 *
+	 * @param {number} status
+	 * @param {BareErrorBody} body
+	 */
+	constructor(status, body) {
+		super(body.message || body.code);
+		/**
+		 * @type {number}
+		 */
+		this.status = status;
+		/**
+		 * @type {BareErrorBody}
+		 */
+		this.body = body;
+	}
+}
+
+const project = {
+	name: 'TOMPHTTP NodeJS Bare Server',
+	repository: 'https://github.com/tomphttp/bare-server-node',
+};
+
+export function json(status, json) {
+	const send = Buffer.from(JSON.stringify(json, null, '\t'));
+
+	return new Response(send, {
+		status,
+		headers: {
+			'content-type': 'application/json',
+			'content-length': send.byteLength,
+		},
+	});
+}
+
+/**
+ * @typedef {object} BareMaintainer
+ * @property {string} [email]
+ * @property {string} [website]
+ */
+
+/**
+ * @typedef {object} BareProject
+ * @property {string} [name]
+ * @property {string} [description]
+ * @property {string} [email]
+ * @property {string} [website]
+ * @property {string} [repository]
+ */
+
+/**
+ * @typedef {'JS'|'TS'|'Java'|'PHP'|'Rust'|'C'|'C++'|'C#'|'Ruby'|'Go'|'Crystal'|'Bash'|string} BareLanguage
+ */
+
+/**
+ * @typedef {object} BareManifest
+ * @property {string} [maintainer]
+ * @property {string} [project]
+ * @property {string[]} versions
+ * @property {BareLanguage} [language]
+ * @property {number} [memoryUsage]
+ */
+
+/**
+ * @typedef {object} BareServerInit
+ * @property {boolean} [logErrors]
+ * @property {string} [localAddress]
+ * @property {BareMaintainer} [maintainer]
+ */
+// directory, logErrors = false, localAddress, maintainer
 
 export default class Server {
-	prefix = '/';
-	fof = this.json(404, { message: 'Not found.' });
-	maintainer = undefined;
-	project = {
-		name: 'TOMPHTTP NodeJS Bare Server',
-		repository: 'https://github.com/tomphttp/bare-server-node',
-	};
-	log_errors = false;
-	local_address = undefined;
-	routes = new Map();
-	socket_routes = new Map();
-	constructor(directory, log_errors, local_address, maintainer) {
-		if (log_errors === true) {
-			this.log_errors = true;
+	/**
+	 *
+	 * @param {string} directory
+	 * @param {BareServerInit} init
+	 */
+	constructor(directory, init = {}) {
+		if (init.logErrors) {
+			/**
+			 * @type {boolean}
+			 */
+			this.logErrors = true;
+		} else {
+			this.logErrors = false;
 		}
 
-		if (typeof local_address === 'string') {
-			this.local_address = local_address;
+		/**
+		 * @type {Map<string, (server: Server, request: Request) => Promise<Response>>}
+		 */
+		this.routes = new Map();
+		/**
+		 * @type {Map<string, (server: Server, request: Request, socket: import('stream').Duplex, head: Buffer) => Promise<Response>>}
+		 */
+		this.socketRoutes = new Map();
+		/**
+		 * @type {Set<() => void>}
+		 */
+		this.onClose = new Set();
+
+		/**
+		 * @type {http.Agent}
+		 */
+		this.httpAgent = http.Agent({
+			keepAlive: true,
+		});
+
+		/**
+		 * @type {https.Agent}
+		 */
+		this.httpsAgent = https.Agent({
+			keepAlive: true,
+		});
+
+		if (init.localAddress) {
+			this.localAddress = init.localAddress;
 		}
 
-		if (typeof maintainer === 'object' && maintainer === null) {
-			this.maintainer = maintainer;
+		if (init.maintainer) {
+			/**
+			 * @type {BareMaintainer|undefined}
+			 */
+			this.maintainer = init.maintainer;
 		}
 
 		if (typeof directory !== 'string') {
@@ -35,124 +147,137 @@ export default class Server {
 			throw new RangeError('Directory must start and end with /');
 		}
 
+		/**
+		 * @type {string}
+		 */
 		this.directory = directory;
 
 		this.routes.set('/', () => {
-			return this.json(200, this.instance_info);
+			return json(200, this.instanceInfo);
 		});
 
-		register_v1(this);
-		register_v2(this);
+		registerV1(this);
+		registerV2(this);
 	}
-	error(...args) {
-		if (this.log_errors) {
-			console.error(...args);
+	/**
+	 * Remove all timers and listeners
+	 */
+	close() {
+		for (const callback of this.onClose) {
+			callback();
 		}
 	}
-	json(status, json) {
-		const send = Buffer.from(JSON.stringify(json, null, '\t'));
-
-		return new Response(send, status, {
-			'content-type': 'application/json',
-			'content-length': send.byteLength,
-		});
+	/**
+	 *
+	 * @param {ClientRequest} request
+	 * @returns {boolean}
+	 */
+	shouldRoute(request) {
+		return request.url.startsWith(this.directory);
 	}
-	route_request(request, response) {
-		if (request.url.startsWith(this.directory)) {
-			this.request(request, response);
-			return true;
-		} else {
-			return false;
-		}
-	}
-	route_upgrade(request, socket, head) {
-		if (request.url.startsWith(this.directory)) {
-			this.upgrade(request, socket, head);
-			return true;
-		} else {
-			return false;
-		}
-	}
-	get instance_info() {
+	/**
+	 *
+	 * @returns {BareManifest}
+	 */
+	get instanceInfo() {
 		return {
 			versions: ['v1', 'v2'],
 			language: 'NodeJS',
 			memoryUsage:
 				Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
 			maintainer: this.maintainer,
-			project: this.project,
+			project,
 		};
 	}
-	async upgrade(client_request, client_socket, client_head) {
-		const request = new Request(
-			client_request,
-			client_request.method,
-			client_request.url,
-			client_request.headers
-		);
+	/**
+	 *
+	 * @param {http.IncomingMessage} req
+	 * @param {import('stream').Duplex} socket
+	 * @param {Buffer} head
+	 */
+	async routeUpgrade(req, socket, head) {
+		const request = new Request(req, {
+			method: req.method,
+			path: req.url,
+			headers: req.headers,
+		});
 
 		const service = request.url.pathname.slice(this.directory.length - 1);
 
-		if (this.routes.has(service)) {
-			const call = this.socket_routes.get(service);
+		if (this.socketRoutes.has(service)) {
+			const call = this.socketRoutes.get(service);
 
 			try {
-				await call(this, request, client_socket, client_head);
+				await call(this, request, socket, head);
 			} catch (error) {
-				this.error(error);
-				client_socket.end();
+				if (this.logErrors) {
+					console.error(error);
+				}
+
+				socket.end();
 			}
 		} else {
-			client_socket.end();
+			socket.end();
 		}
 	}
 	/**
 	 *
-	 * @param {import('node:http').ClientRequest} server_request
-	 * @param {import('node:http').ServerResponse} server_response
+	 * @param {import('node:http').ClientRequest} req
+	 * @param {import('node:http').ServerResponse} res
 	 */
-	async request(client_request, server_response) {
-		const request = new Request(
-			client_request,
-			client_request.method,
-			client_request.url,
-			client_request.headers
-		);
+	async routeRequest(req, res) {
+		const request = new Request(req, {
+			method: req.method,
+			path: req.url,
+			headers: req.headers,
+		});
 
 		const service = request.url.pathname.slice(this.directory.length - 1);
 		let response;
 
-		if (this.routes.has(service)) {
-			const call = this.routes.get(service);
+		try {
+			if (request.method === 'OPTIONS') {
+				response = new Response(undefined, { status: 200 });
+			} else if (this.routes.has(service)) {
+				const call = this.routes.get(service);
 
-			try {
 				response = await call(this, request);
-			} catch (error) {
-				this.error(error);
-
-				if (error instanceof Error) {
-					response = this.json(500, {
-						code: 'UNKNOWN',
-						id: `error.${error.name}`,
-						message: error.message,
-						stack: error.stack,
-					});
-				} else {
-					response = this.json(500, {
-						code: 'UNKNOWN',
-						id: 'error.Exception',
-						message: error,
-						stack: new Error(error).stack,
-					});
-				}
+			} else {
+				throw new createHttpError.NotFound();
 			}
-		} else {
-			response = this.fof;
-		}
+		} catch (error) {
+			if (this.logErrors) {
+				console.error(error);
+			}
 
-		if (!(response instanceof Response)) {
-			this.error('Data', server_request.url, 'was not a response.');
-			response = this.fof;
+			if (error instanceof Error) {
+				response = json(500, {
+					code: 'UNKNOWN',
+					id: `error.${error.name}`,
+					message: error.message,
+					stack: error.stack,
+				});
+			} else {
+				response = json(500, {
+					code: 'UNKNOWN',
+					id: 'error.Exception',
+					message: error,
+					stack: new Error(error).stack,
+				});
+			}
+
+			if (!(response instanceof Response)) {
+				if (this.logErrors) {
+					console.error(
+						'Cannot',
+						req.method,
+						req.url,
+						': Route did not return a response.'
+					);
+				}
+
+				throw new createHttpError.InternalServerError();
+			}
 		}
 
 		response.headers.set('x-robots-tag', 'noindex');
@@ -160,10 +285,10 @@ export default class Server {
 		response.headers.set('access-control-allow-origin', '*');
 		response.headers.set('access-control-allow-methods', '*');
 		response.headers.set('access-control-expose-headers', '*');
-		// don't send preflight on every request...
-		// instead, send preflight every 10 minutes
+		// don't fetch preflight on every request...
+		// instead, fetch preflight every 10 minutes
 		response.headers.set('access-control-max-age', '7200');
 
-		response.send(server_response);
+		writeResponse(response, res);
 	}
 }

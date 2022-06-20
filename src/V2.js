@@ -1,14 +1,15 @@
-import http from 'node:http';
-import https from 'node:https';
-import { Response, Headers } from './AbstractMessage.js';
-import { split_headers, join_headers } from './splitHeaderUtil.js';
+import { Response } from './AbstractMessage.js';
+import { Headers } from 'fetch-headers';
+import { splitHeaders, joinHeaders } from './splitHeaderUtil.js';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
+import { BareError } from './Server.js';
+import { fetch, upgradeFetch } from './requestUtil.js';
 
-const valid_protocols = ['http:', 'https:', 'ws:', 'wss:'];
+const validProtocols = ['http:', 'https:', 'ws:', 'wss:'];
 
-const forbidden_forward = [
+const forbiddenForwardHeaders = [
 	'connection',
 	'transfer-encoding',
 	'host',
@@ -16,7 +17,8 @@ const forbidden_forward = [
 	'origin',
 	'referer',
 ];
-const forbidden_pass = [
+
+const forbiddenPassHeaders = [
 	'vary',
 	'connection',
 	'transfer-encoding',
@@ -29,288 +31,204 @@ const forbidden_pass = [
 ];
 
 // common defaults
-const default_forward_headers = [
+const defaultForwardHeaders = [
 	'accept-encoding',
 	'accept-language',
 	'sec-websocket-extensions',
 	'sec-websocket-key',
 	'sec-websocket-version',
 ];
-const default_pass_headers = [
+
+const defaultPassHeaders = [
 	'content-encoding',
 	'content-length',
 	'last-modified',
 ];
-const default_pass_status = [];
+
+const defaultPassStatus = [];
 
 // defaults if the client provides a cache key
-const default_cache_forward_headers = [
+const defaultCacheForwardHeaders = [
 	'if-modified-since',
 	'if-none-match',
 	'cache-control',
 ];
-const default_cache_pass_headers = ['cache-control', 'etag'];
-const default_cache_pass_status = [304];
 
-// vary isnt respected
-// const vary_headers = ['x-bare-protocol', 'x-bare-host', 'x-bare-port', 'x-bare-path', 'x-bare-headers'];
+const defaultCachePassHeaders = ['cache-control', 'etag'];
+const defaultCachePassStatus = [304];
 
 const randomBytesAsync = promisify(randomBytes);
 
-// max of 4 concurrent sockets, rest is queued while busy? set max to 75
-
-const http_agent = http.Agent({
-	keepAlive: true,
-});
-
-const https_agent = https.Agent({
-	keepAlive: true,
-});
-
-async function fetch(server, server_request, request_headers, url) {
-	const options = {
-		host: url.host,
-		port: url.port,
-		path: url.path,
-		method: server_request.method,
-		headers: request_headers,
-		setHost: false,
-		localAddress: server.local_address,
-	};
-
-	let outgoing;
-
-	if (url.protocol === 'https:') {
-		outgoing = https.request({ ...options, agent: https_agent });
-	} else if (url.protocol === 'http:') {
-		outgoing = http.request({ ...options, agent: http_agent });
-	} else {
-		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
-	}
-
-	server_request.body.pipe(outgoing);
-
-	return await new Promise((resolve, reject) => {
-		outgoing.on('response', resolve);
-		outgoing.on('error', reject);
-	});
-}
-
-async function upgradeFetch(server, server_request, request_headers, url) {
-	const options = {
-		host: url.host,
-		port: url.port,
-		path: url.path,
-		headers: request_headers,
-		method: server_request.method,
-		setHost: false,
-		localAddress: server.local_address,
-	};
-
-	let outgoing;
-
-	if (url.protocol === 'wss:') {
-		outgoing = https.request({ ...options, agent: https_agent });
-	} else if (url.protocol === 'ws:') {
-		outgoing = http.request({ ...options, agent: http_agent });
-	} else {
-		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
-	}
-
-	outgoing.end();
-
-	return await new Promise((resolve, reject) => {
-		outgoing.on('response', response => {
-			reject("Remote didn't upgrade the WebSocket");
-		});
-
-		outgoing.on('upgrade', (...args) => {
-			resolve(args);
-		});
-
-		outgoing.on('error', error => {
-			reject(error);
-		});
-	});
-}
-
-function load_forwarded_headers(forward, target, client_request) {
-	for (let header of forward) {
-		if (client_request.headers.has(header)) {
-			target[header] = client_request.headers.get(header);
+/**
+ *
+ * @param {string[]} forward
+ * @param {import('./Server.js').BareHeaders} target
+ * @param {Request} request
+ */
+function loadForwardedHeaders(forward, target, request) {
+	for (const header of forward) {
+		if (request.headers.has(header)) {
+			target[header] = request.headers.get(header);
 		}
 	}
 }
 
-const split_header_value = /,\s*/g;
+const splitHeaderValue = /,\s*/g;
+
+/**
+ * @typedef {object} BareHeaderData
+ * @property {BareRemote} remote
+ * @property {import('./Server.js').BareHeaders} sendHeaders
+ * @property {string[]} passHeaders
+ * @property {number[]} passStatus
+ * @property {string[]} forwardHeaders
+ */
 
 /**
  *
- * @param {import('./AbstractMessage.js').Request} server_request
- * @returns
+ * @param {Request} request
+ * @returns {BareHeaderData}
  */
-function read_headers(server_request) {
+function readHeaders(request) {
 	const remote = Object.setPrototypeOf({}, null);
-	const send_headers = Object.setPrototypeOf({}, null);
-	const pass_headers = [...default_pass_headers];
-	const pass_status = [...default_pass_status];
-	const forward_headers = [...default_forward_headers];
+	const sendHeaders = Object.setPrototypeOf({}, null);
+	const passHeaders = [...defaultPassHeaders];
+	const passStatus = [...defaultPassStatus];
+	const forwardHeaders = [...defaultForwardHeaders];
 
 	// should be unique
-	const cache = server_request.url.searchParams.has('cache');
+	const cache = request.url.searchParams.has('cache');
 
 	if (cache) {
-		pass_headers.push(...default_cache_pass_headers);
-		pass_status.push(...default_cache_pass_status);
-		forward_headers.push(...default_cache_forward_headers);
+		passHeaders.push(...defaultCachePassHeaders);
+		passStatus.push(...defaultCachePassStatus);
+		forwardHeaders.push(...defaultCacheForwardHeaders);
 	}
 
-	const headers = join_headers(server_request.headers);
+	const headers = joinHeaders(request.headers);
 
-	if (headers.error) {
-		return {
-			error: headers.error,
-		};
-	}
-
-	for (let remote_prop of ['host', 'port', 'protocol', 'path']) {
-		const header = `x-bare-${remote_prop}`;
+	for (const remoteProp of ['host', 'port', 'protocol', 'path']) {
+		const header = `x-bare-${remoteProp}`;
 
 		if (headers.has(header)) {
 			let value = headers.get(header);
 
-			switch (remote_prop) {
+			switch (remoteProp) {
 				case 'port':
 					value = parseInt(value);
 					if (isNaN(value)) {
-						return {
-							error: {
-								code: 'INVALID_BARE_HEADER',
-								id: `request.headers.${header}`,
-								message: `Header was not a valid integer.`,
-							},
-						};
+						throw new BareError(400, {
+							code: 'INVALID_BARE_HEADER',
+							id: `request.headers.${header}`,
+							message: `Header was not a valid integer.`,
+						});
 					}
 					break;
 				case 'protocol':
-					if (!valid_protocols.includes(value)) {
-						return {
-							error: {
-								code: 'INVALID_BARE_HEADER',
-								id: `request.headers.${header}`,
-								message: `Header was invalid`,
-							},
-						};
+					if (!validProtocols.includes(value)) {
+						throw new BareError(400, {
+							code: 'INVALID_BARE_HEADER',
+							id: `request.headers.${header}`,
+							message: `Header was invalid`,
+						});
 					}
 					break;
 			}
 
-			remote[remote_prop] = value;
+			remote[remoteProp] = value;
 		} else {
-			return {
-				error: {
-					code: 'MISSING_BARE_HEADER',
-					id: `request.headers.${header}`,
-					message: `Header was not specified.`,
-				},
-			};
+			throw new BareError(400, {
+				code: 'MISSING_BARE_HEADER',
+				id: `request.headers.${header}`,
+				message: `Header was not specified.`,
+			});
 		}
 	}
 
 	if (headers.has('x-bare-headers')) {
-		let json;
-
 		try {
-			json = JSON.parse(headers.get('x-bare-headers'));
-		} catch (err) {
-			return {
-				error: {
-					code: 'INVALID_BARE_HEADER',
-					id: `request.headers.x-bare-headers`,
-					message: `Header contained invalid JSON. (${err.message})`,
-				},
-			};
-		}
+			const json = JSON.parse(headers.get('x-bare-headers'));
 
-		for (let header in json) {
-			const value = json[header];
+			for (const header in json) {
+				const value = json[header];
 
-			if (typeof value === 'string') {
-				send_headers[header] = value;
-			} else if (Array.isArray(value)) {
-				const array = [];
+				if (typeof value === 'string') {
+					sendHeaders[header] = value;
+				} else if (Array.isArray(value)) {
+					const array = [];
 
-				for (let val in value) {
-					if (typeof val !== 'string') {
-						return {
-							error: {
+					for (const val in value) {
+						if (typeof val !== 'string') {
+							throw new BareError(400, {
 								code: 'INVALID_BARE_HEADER',
 								id: `bare.headers.${header}`,
 								message: `Header was not a String.`,
-							},
-						};
+							});
+						}
+
+						array.push(val);
 					}
 
-					array.push(val);
-				}
-
-				send_headers[header] = array;
-			} else {
-				return {
-					error: {
+					sendHeaders[header] = array;
+				} else {
+					throw new BareError(400, {
 						code: 'INVALID_BARE_HEADER',
 						id: `bare.headers.${header}`,
 						message: `Header was not a String.`,
-					},
-				};
+					});
+				}
+			}
+		} catch (error) {
+			if (error instanceof SyntaxError) {
+				throw new BareError(400, {
+					code: 'INVALID_BARE_HEADER',
+					id: `request.headers.x-bare-headers`,
+					message: `Header contained invalid JSON. (${error.message})`,
+				});
+			} else {
+				throw error;
 			}
 		}
 	} else {
-		return {
-			error: {
-				code: 'MISSING_BARE_HEADER',
-				id: `request.headers.x-bare-headers`,
-				message: `Header was not specified.`,
-			},
-		};
+		throw new BareError(400, {
+			code: 'MISSING_BARE_HEADER',
+			id: `request.headers.x-bare-headers`,
+			message: `Header was not specified.`,
+		});
 	}
 
 	if (headers.has('x-bare-pass-status')) {
-		const parsed = headers.get('x-bare-pass-status').split(split_header_value);
+		const parsed = headers.get('x-bare-pass-status').split(splitHeaderValue);
 
-		for (let value of parsed) {
+		for (const value of parsed) {
 			const number = parseInt(value);
 
 			if (isNaN(number)) {
-				return {
-					error: {
-						code: 'INVALID_BARE_HEADER',
-						id: `request.headers.x-bare-pass-status`,
-						message: `Array contained non-number value.`,
-					},
-				};
+				throw new BareError(400, {
+					code: 'INVALID_BARE_HEADER',
+					id: `request.headers.x-bare-pass-status`,
+					message: `Array contained non-number value.`,
+				});
 			} else {
-				pass_status.push(number);
+				passStatus.push(number);
 			}
 		}
 	}
 
 	if (headers.has('x-bare-pass-headers')) {
-		const parsed = headers.get('x-bare-pass-headers').split(split_header_value);
+		const parsed = headers.get('x-bare-pass-headers').split(splitHeaderValue);
 
 		for (let header of parsed) {
 			header = header.toLowerCase();
 
-			if (forbidden_pass.includes(header)) {
-				return {
-					error: {
-						code: 'FORBIDDEN_BARE_HEADER',
-						id: `request.headers.x-bare-forward-headers`,
-						message: `A forbidden header was passed.`,
-					},
-				};
+			if (forbiddenPassHeaders.includes(header)) {
+				throw new BareError(400, {
+					code: 'FORBIDDEN_BARE_HEADER',
+					id: `request.headers.x-bare-forward-headers`,
+					message: `A forbidden header was passed.`,
+				});
 			} else {
-				pass_headers.push(header);
+				passHeaders.push(header);
 			}
 		}
 	}
@@ -318,106 +236,66 @@ function read_headers(server_request) {
 	if (headers.has('x-bare-forward-headers')) {
 		const parsed = headers
 			.get('x-bare-forward-headers')
-			.split(split_header_value);
+			.split(splitHeaderValue);
 
 		for (let header of parsed) {
 			header = header.toLowerCase();
 
-			if (forbidden_forward.includes(header)) {
-				return {
-					error: {
-						code: 'FORBIDDEN_BARE_HEADER',
-						id: `request.headers.x-bare-forward-headers`,
-						message: `A forbidden header was forwarded.`,
-					},
-				};
+			if (forbiddenForwardHeaders.includes(header)) {
+				throw new BareError(400, {
+					code: 'FORBIDDEN_BARE_HEADER',
+					id: `request.headers.x-bare-forward-headers`,
+					message: `A forbidden header was forwarded.`,
+				});
 			} else {
-				forward_headers.push(header);
+				forwardHeaders.push(header);
 			}
 		}
 	}
 
 	return {
 		remote,
-		headers: send_headers,
-		pass_headers,
-		pass_status,
-		forward_headers,
+		sendHeaders,
+		passHeaders,
+		passStatus,
+		forwardHeaders,
 	};
 }
 
-async function request(server, server_request) {
-	const { error, remote, headers, pass_headers, pass_status, forward_headers } =
-		read_headers(server_request);
+/**
+ *
+ * @param {import('./Server.js').default} server
+ * @param {import('./AbstractMessage.js').Request} request
+ * @returns {Promise<Response>}
+ */
+async function tunnelRequest(server, request) {
+	const { remote, sendHeaders, passHeaders, passStatus, forwardHeaders } =
+		readHeaders(request);
 
-	if (error) {
-		// sent by browser, not client
-		if (server_request.method === 'OPTIONS') {
-			return new Response(undefined, 200);
-		} else {
-			return server.json(400, error);
-		}
-	}
+	loadForwardedHeaders(forwardHeaders, sendHeaders, request);
 
-	load_forwarded_headers(forward_headers, headers, server_request);
+	const response = await fetch(server, request, sendHeaders, remote);
 
-	let response;
+	const responseHeaders = new Headers();
 
-	try {
-		response = await fetch(server, server_request, headers, remote);
-	} catch (err) {
-		if (err instanceof Error) {
-			switch (err.code) {
-				case 'ENOTFOUND':
-					return server.json(500, {
-						code: 'HOST_NOT_FOUND',
-						id: 'request',
-						message: 'The specified host could not be resolved.',
-					});
-				case 'ECONNREFUSED':
-					return server.json(500, {
-						code: 'CONNECTION_REFUSED',
-						id: 'response',
-						message: 'The remote rejected the request.',
-					});
-				case 'ECONNRESET':
-					return server.json(500, {
-						code: 'CONNECTION_RESET',
-						id: 'response',
-						message: 'The request was forcibly closed.',
-					});
-				case 'ETIMEOUT':
-					return server.json(500, {
-						code: 'CONNECTION_TIMEOUT',
-						id: 'response',
-						message: 'The response timed out.',
-					});
-			}
-		}
-
-		throw err;
-	}
-
-	const response_headers = new Headers();
-
-	for (let header of pass_headers) {
+	for (const header of passHeaders) {
 		if (header in response.headers) {
-			response_headers.set(header, response.headers[header]);
+			responseHeaders.set(header, response.headers[header]);
 		}
 	}
 
 	let status;
 
-	if (pass_status.includes(response.statusCode)) {
+	if (passStatus.includes(response.statusCode)) {
 		status = response.statusCode;
 	} else {
 		status = 200;
 	}
 
-	if (!default_cache_pass_status.includes(status)) {
-		response_headers.set('x-bare-status', response.statusCode);
-		response_headers.set('x-bare-status-text', response.statusMessage);
-		response_headers.set(
+	if (!defaultCachePassStatus.includes(status)) {
+		responseHeaders.set('x-bare-status', response.statusCode);
+		responseHeaders.set('x-bare-status-text', response.statusMessage);
+		responseHeaders.set(
 			'x-bare-headers',
 			JSON.stringify(
 				mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {
@@ -427,168 +305,204 @@ async function request(server, server_request) {
 		);
 	}
 
-	return new Response(response, status, split_headers(response_headers));
+	return new Response(response, {
+		status,
+		headers: splitHeaders(responseHeaders),
+	});
 }
 
-// prevent users from specifying id=__proto__ or id=constructor
-const temp_meta = Object.setPrototypeOf({}, null);
+/**
+ * @typedef {object} Meta
+ * @property {import('http').IncomingMessage} [response]
+ * @property {number} set
+ * @property {import('./Server.js').BareHeaders} sendHeaders
+ * @property {string[]} forwardHeaders
+ */
 
-setInterval(() => {
-	for (let id in temp_meta) {
-		if (temp_meta[id].expires < Date.now()) {
-			delete temp_meta[id];
-		}
-	}
-}, 1e3);
+/**
+ * @type {Map<string, Meta>}
+ */
+const tempMeta = new Map();
+
+const metaExpiration = 30e3;
 
 /**
  *
  * @param {import('./Server.js').default} server
- * @param {import('./AbstractMessage.js').Request} server_request
+ * @param {Request} request
+ * @returns {Promise<Response>}
  */
-async function get_meta(server, server_request) {
-	if (server_request.method === 'OPTIONS') {
+async function getMeta(server, request) {
+	if (request.method === 'OPTIONS') {
 		return new Response(undefined, 200);
 	}
 
-	if (!server_request.headers.has('x-bare-id')) {
-		return server.json(400, {
+	if (!request.headers.has('x-bare-id')) {
+		throw new BareError(400, {
 			code: 'MISSING_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
 			message: 'Header was not specified',
 		});
 	}
 
-	const id = server_request.headers.get('x-bare-id');
+	const id = request.headers.get('x-bare-id');
 
-	if (!(id in temp_meta)) {
-		return server.json(400, {
+	if (!(id in tempMeta)) {
+		throw new BareError(400, {
 			code: 'INVALID_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
 			message: 'Unregistered ID',
 		});
 	}
 
-	const meta = temp_meta[id];
+	const meta = tempMeta.get(id);
 
-	delete temp_meta[id];
+	if (!meta.response) {
+		throw new BareError(400, {
+			code: 'INVALID_BARE_HEADER',
+			id: 'request.headers.x-bare-id',
+			message: 'Meta not ready',
+		});
+	}
 
-	const response_headers = new Headers();
+	tempMeta.delete(id);
 
-	response_headers.set('x-bare-status', meta.response.status);
-	response_headers.set('x-bare-status-text', meta.response.status_text);
-	response_headers.set('x-bare-headers', JSON.stringify(meta.response.headers));
+	const responseHeaders = new Headers();
 
-	return new Response(undefined, 200, split_headers(response_headers));
+	responseHeaders.set('x-bare-status', meta.response.statusCode);
+	responseHeaders.set('x-bare-status-text', meta.response.statusMessage);
+	responseHeaders.set(
+		'x-bare-headers',
+		JSON.stringify(
+			mapHeadersFromArray(rawHeaderNames(meta.response.rawHeaders), {
+				...meta.response.headers,
+			})
+		)
+	);
+
+	return new Response(undefined, 200, splitHeaders(responseHeaders));
 }
 
-async function new_meta(server, server_request) {
-	const { error, remote, headers, forward_headers } =
-		read_headers(server_request);
-
-	if (error) {
-		// sent by browser, not client
-		if (server_request.method === 'OPTIONS') {
-			return new Response(undefined, 200);
-		} else {
-			return server.json(400, error);
-		}
-	}
+/**
+ *
+ * @param {import('./Server.js').default} server
+ * @param {import('./AbstractMessage.js').Request} request
+ * @returns {Promise<Response>}
+ */
+async function newMeta(server, request) {
+	const { remote, sendHeaders, forwardHeaders } = readHeaders(request);
 
 	const id = (await randomBytesAsync(32)).toString('hex');
 
-	temp_meta[id] = {
-		expires: Date.now() + 30e3,
+	tempMeta.set(id, {
+		set: Date.now(),
 		remote,
-		headers,
-		forward_headers,
-		response: {},
-	};
+		sendHeaders,
+		forwardHeaders,
+	});
 
 	return new Response(Buffer.from(id));
 }
 
-async function socket(server, client_request, client_socket, client_head) {
-	if (!client_request.headers.has('sec-websocket-protocol')) {
-		server_socket.end();
+async function tunnelSocket(server, request, socket) {
+	if (!request.headers.has('sec-websocket-protocol')) {
+		socket.end();
 		return;
 	}
 
-	const id = client_request.headers.get('sec-websocket-protocol');
+	const id = request.headers.get('sec-websocket-protocol');
 
-	if (!(id in temp_meta)) {
-		server_socket.end();
+	if (!tempMeta.has(id)) {
+		socket.end();
 		return;
 	}
 
-	const meta = temp_meta[id];
+	const meta = tempMeta.get(id);
 
-	load_forwarded_headers(meta.forward_headers, meta.headers, client_request);
+	loadForwardedHeaders(meta.forwardHeaders, meta.headers, request);
 
-	const [remote_response, remote_socket, head] = await upgradeFetch(
+	const [remoteResponse, remoteSocket] = await upgradeFetch(
 		server,
-		client_request,
+		request,
 		meta.headers,
 		meta.remote
 	);
-	const remote_headers = new Headers(remote_response.headers);
+
+	const remoteHeaders = new Headers(remoteResponse.headers);
 
 	meta.response.headers = mapHeadersFromArray(
-		rawHeaderNames(remote_response.rawHeaders),
-		{ ...remote_response.headers }
+		rawHeaderNames(remoteResponse.rawHeaders),
+		{ ...remoteResponse.headers }
 	);
-	meta.response.status = remote_response.statusCode;
-	meta.response.status_text = remote_response.statusMessage;
 
-	const response_headers = [
+	meta.response = remoteResponse;
+
+	const responseHeaders = [
 		`HTTP/1.1 101 Switching Protocols`,
 		`Upgrade: websocket`,
 		`Connection: Upgrade`,
-		`Sec-WebSocket-Protocol: ${protocol}`,
+		`Sec-WebSocket-Protocol: ${id}`,
 	];
 
-	if (remote_headers.has('sec-websocket-extensions')) {
-		response_headers.push(
-			`Sec-WebSocket-Extensions: ${remote_headers.get(
+	if (remoteHeaders.has('sec-websocket-extensions')) {
+		responseHeaders.push(
+			`Sec-WebSocket-Extensions: ${remoteHeaders.get(
 				'sec-websocket-extensions'
 			)}`
 		);
 	}
 
-	if (remote_headers.has('sec-websocket-accept')) {
-		response_headers.push(
-			`Sec-WebSocket-Accept: ${remote_headers.get('sec-websocket-accept')}`
+	if (remoteHeaders.has('sec-websocket-accept')) {
+		responseHeaders.push(
+			`Sec-WebSocket-Accept: ${remoteHeaders.get('sec-websocket-accept')}`
 		);
 	}
 
-	client_socket.write(response_headers.concat('', '').join('\r\n'));
-	client_socket.write(head);
+	socket.write(responseHeaders.concat('', '').join('\r\n'));
 
-	remote_socket.on('close', () => {
-		client_socket.end();
+	remoteSocket.on('close', () => {
+		socket.end();
 	});
 
-	client_socket.on('close', () => {
-		remote_socket.end();
+	socket.on('close', () => {
+		remoteSocket.end();
 	});
 
-	remote_socket.on('error', err => {
-		server.error('Remote socket error:', err);
-		client_socket.end();
+	remoteSocket.on('error', error => {
+		server.error('Remote socket error:', error);
+		socket.end();
 	});
 
-	client_socket.on('error', err => {
-		server.error('Serving socket error:', err);
-		remote_socket.end();
+	socket.on('error', error => {
+		server.error('Serving socket error:', error);
+		remoteSocket.end();
 	});
 
-	remote_socket.pipe(client_socket);
-	client_socket.pipe(remote_socket);
+	remoteSocket.pipe(socket);
+	socket.pipe(remoteSocket);
 }
 
+/**
+ *
+ * @param {import('./Server.js').default} server
+ */
 export default function registerV2(server) {
-	server.routes.set('/v2/', request);
-	server.routes.set('/v2/ws-new-meta', new_meta);
-	server.routes.set('/v2/ws-meta', get_meta);
-	server.socket_routes.set('/v2/', socket);
+	server.routes.set('/v2/', tunnelRequest);
+	server.routes.set('/v2/ws-new-meta', newMeta);
+	server.routes.set('/v2/ws-meta', getMeta);
+	server.socketRoutes.set('/v2/', tunnelSocket);
+
+	const interval = setInterval(() => {
+		for (const [id, meta] of tempMeta) {
+			const expires = meta.set + metaExpiration;
+
+			if (expires < Date.now()) {
+				tempMeta.delete(id);
+			}
+		}
+	}, 1e3);
+
+	server.onClose.add(() => {
+		clearInterval(interval);
+	});
 }
