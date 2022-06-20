@@ -1,5 +1,44 @@
 import http from 'node:http';
 import https from 'node:https';
+import { BareError } from './Server.js';
+
+/**
+ *
+ * @param {Error} error
+ * @returns {Error|BareError}
+ */
+function outgoingError(error) {
+	if (error instanceof Error) {
+		switch (error.code) {
+			case 'ENOTFOUND':
+				return new BareError(500, {
+					code: 'HOST_NOT_FOUND',
+					id: 'request',
+					message: 'The specified host could not be resolved.',
+				});
+			case 'ECONNREFUSED':
+				return new BareError(500, {
+					code: 'CONNECTION_REFUSED',
+					id: 'response',
+					message: 'The remote rejected the request.',
+				});
+			case 'ECONNRESET':
+				return new BareError(500, {
+					code: 'CONNECTION_RESET',
+					id: 'response',
+					message: 'The request was forcibly closed.',
+				});
+			case 'ETIMEOUT':
+				return new BareError(500, {
+					code: 'CONNECTION_TIMEOUT',
+					id: 'response',
+					message: 'The response timed out.',
+				});
+		}
+	}
+
+	return error;
+}
 
 /**
  * @typedef {object} BareRemote
@@ -50,8 +89,13 @@ export async function fetch(server, request, requestHeaders, url) {
 	request.body.pipe(outgoing);
 
 	return await new Promise((resolve, reject) => {
-		outgoing.on('response', resolve);
-		outgoing.on('error', reject);
+		outgoing.on('response', response => {
+			resolve(response);
+		});
+
+		outgoing.on('error', error => {
+			reject(outgoingError(error));
+		});
 	});
 }
 
@@ -87,8 +131,13 @@ export async function upgradeFetch(server, request, requestHeaders, remote) {
 	outgoing.end();
 
 	return await new Promise((resolve, reject) => {
-		outgoing.on('response', () => {
-			reject('Remote upgraded the WebSocket');
+		outgoing.on('response', r => {
+			const cu = [];
+			r.on('data', c => cu.push(c));
+			r.on('end', () => {
+				console.log(Buffer.concat(cu).toString());
+			});
+			reject('Remote did not upgrade the WebSocket');
 		});
 
 		outgoing.on('upgrade', (...args) => {
@@ -96,7 +145,7 @@ export async function upgradeFetch(server, request, requestHeaders, remote) {
 		});
 
 		outgoing.on('error', error => {
-			reject(error);
+			reject(outgoingError(error));
 		});
 	});
 }

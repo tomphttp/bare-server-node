@@ -347,7 +347,7 @@ async function getMeta(server, request) {
 
 	const id = request.headers.get('x-bare-id');
 
-	if (!(id in tempMeta)) {
+	if (!tempMeta.has(id)) {
 		throw new BareError(400, {
 			code: 'INVALID_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
@@ -419,21 +419,16 @@ async function tunnelSocket(server, request, socket) {
 
 	const meta = tempMeta.get(id);
 
-	loadForwardedHeaders(meta.forwardHeaders, meta.headers, request);
+	loadForwardedHeaders(meta.forwardHeaders, meta.sendHeaders, request);
 
 	const [remoteResponse, remoteSocket] = await upgradeFetch(
 		server,
 		request,
-		meta.headers,
+		meta.sendHeaders,
 		meta.remote
 	);
 
 	const remoteHeaders = new Headers(remoteResponse.headers);
-
-	meta.response.headers = mapHeadersFromArray(
-		rawHeaderNames(remoteResponse.rawHeaders),
-		{ ...remoteResponse.headers }
-	);
 
 	meta.response = remoteResponse;
 
