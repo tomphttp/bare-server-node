@@ -32,7 +32,7 @@ export class Response {
 		if (!(response instanceof OutgoingMessage))
 			throw new TypeError('Request must be an OutgoingMessage');
 
-		for (let [header, value] of this.headers) {
+		for (const [header, value] of this.headers) {
 			response.setHeader(header, value);
 		}
 

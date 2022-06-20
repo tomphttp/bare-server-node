@@ -417,7 +417,7 @@ async function v1socket(server, server_request, server_socket, server_head) {
 	server_socket.pipe(socket);
 }
 
-export default function register(server) {
+export default function registerV1(server) {
 	server.routes.set('/v1/', v1);
 	server.routes.set('/v1/ws-new-meta', v1wsnewmeta);
 	server.routes.set('/v1/ws-meta', v1wsmeta);

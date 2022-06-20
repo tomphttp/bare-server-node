@@ -586,7 +586,7 @@ async function socket(server, client_request, client_socket, client_head) {
 	client_socket.pipe(remote_socket);
 }
 
-export default function register(server) {
+export default function registerV2(server) {
 	server.routes.set('/v2/', request);
 	server.routes.set('/v2/ws-new-meta', new_meta);
 	server.routes.set('/v2/ws-meta', get_meta);
