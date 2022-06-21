@@ -25,6 +25,13 @@
 	"type": "module",
 	"main": "src/Server.js",
 	"bin": "scripts/start.js",
+	"scripts": {
+		"start": "node scripts/start.js",
+		"build": "rollup -c",
+		"build:watch": "rollup -cw",
+		"prepare": "node ./scripts/prepare.js",
+		"lint": "eslint ./src/"
+	},
 	"dependencies": {
 		"commander": "^9.0.0",
 		"dotenv": "^16.0.1",
@@ -32,17 +39,27 @@
 		"http-errors": "^2.0.0"
 	},
 	"devDependencies": {
+		"@rollup/plugin-babel": "^5.3.1",
+		"@types/http-errors": "^1.8.2",
+		"@typescript-eslint/eslint-plugin": "^5.29.0",
+		"@typescript-eslint/parser": "^5.29.0",
 		"eslint": "^8.18.0",
 		"eslint-config-prettier": "^8.5.0",
 		"husky": "^7.0.4",
+		"import-sort-style-module": "^6.0.0",
 		"lint-staged": "^12.3.7",
-		"prettier": "2.6.0"
+		"prettier": "^2.7.1",
+		"prettier-plugin-import-sort": "^0.0.7",
+		"resolve-typescript-plugin": "^1.2.0",
+		"rollup": "^2.75.7",
+		"rollup-plugin-typescript2": "^0.32.1"
 	},
 	"lint-staged": {
-		"*.{js,json}": "prettier --write"
+		"*.{mjs, js, ts, json}": "prettier --write"
 	},
-	"scripts": {
-		"start": "node scripts/start.js",
-		"prepare": "husky install"
+	"importSort": {
+		".mjs, .js, .jsx, .ts, .tsx": {
+			"style": "module"
+		}
 	}
 }

@@ -1,15 +1,23 @@
 import http from 'node:http';
 import https from 'node:https';
-import { BareError } from './Server.js';
+import { Request, RequestInit } from './AbstractMessage';
+import Server, { BareError } from './BareServer';
+import { Duplex } from 'stream';
 
-/**
- *
- * @param {Error} error
- * @returns {Error|BareError}
- */
-function outgoingError(error) {
+export interface BareRemote {
+	host: string;
+	port: number | string;
+	path: string;
+	protocol: string;
+}
+
+export type BareHeaders = {
+	[key: string]: string[] | string;
+};
+
+function outgoingError<T>(error: T): T | BareError {
 	if (error instanceof Error) {
-		switch (error.code) {
+		switch ((<Error & { code?: string }>error).code) {
 			case 'ENOTFOUND':
 				return new BareError(500, {
 					code: 'HOST_NOT_FOUND',
@@ -57,15 +65,12 @@ function outgoingError(error) {
  *
  */
 
-/**
- *
- * @param {import('./Server.js').default} server
- * @param {import('./AbstractMessage.js').Request} request
- * @param {import('./Server.js').BareHeaders} requestHeaders
- * @param {BareRemote} url
- * @returns {Promise<import('http').ServerResponse>}
- */
-export async function fetch(server, request, requestHeaders, url) {
+export async function fetch(
+	server: Server,
+	request: Request,
+	requestHeaders: BareHeaders,
+	url: BareRemote
+): Promise<http.IncomingMessage> {
 	const options = {
 		host: url.host,
 		port: url.port,
@@ -76,7 +81,7 @@ export async function fetch(server, request, requestHeaders, url) {
 		localAddress: server.localAddress,
 	};
 
-	let outgoing;
+	let outgoing: http.ClientRequest;
 
 	if (url.protocol === 'https:') {
 		outgoing = https.request({ ...options, agent: server.httpsAgent });
@@ -89,25 +94,22 @@ export async function fetch(server, request, requestHeaders, url) {
 	request.body.pipe(outgoing);
 
 	return await new Promise((resolve, reject) => {
-		outgoing.on('response', response => {
+		outgoing.on('response', (response: http.IncomingMessage) => {
 			resolve(response);
 		});
 
-		outgoing.on('error', error => {
+		outgoing.on('error', (error: Error) => {
 			reject(outgoingError(error));
 		});
 	});
 }
 
-/**
- *
- * @param {import('./Server.js').default} server
- * @param {import('./AbstractMessage.js').Request} request
- * @param {import('./Server.js').BareHeaders} requestHeaders
- * @param {BareRemote} remote
- * @returns {Promise<[http.IncomingMessage,import('stream').Duplex,Buffer]>}
- */
-export async function upgradeFetch(server, request, requestHeaders, remote) {
+export async function upgradeFetch(
+	server: Server,
+	request: Request,
+	requestHeaders: BareHeaders,
+	remote: BareRemote
+): Promise<[http.IncomingMessage, Duplex, Buffer]> {
 	const options = {
 		host: remote.host,
 		port: remote.port,
@@ -118,7 +120,7 @@ export async function upgradeFetch(server, request, requestHeaders, remote) {
 		localAddress: server.localAddress,
 	};
 
-	let outgoing;
+	let outgoing: http.ClientRequest;
 
 	if (remote.protocol === 'wss:') {
 		outgoing = https.request({ ...options, agent: server.httpsAgent });
@@ -131,20 +133,18 @@ export async function upgradeFetch(server, request, requestHeaders, remote) {
 	outgoing.end();
 
 	return await new Promise((resolve, reject) => {
-		outgoing.on('response', r => {
-			const cu = [];
-			r.on('data', c => cu.push(c));
-			r.on('end', () => {
-				console.log(Buffer.concat(cu).toString());
-			});
+		outgoing.on('response', () => {
 			reject('Remote did not upgrade the WebSocket');
 		});
 
-		outgoing.on('upgrade', (...args) => {
-			resolve(args);
-		});
+		outgoing.on(
+			'upgrade',
+			(request: http.IncomingMessage, socket: Duplex, head: Buffer) => {
+				resolve([request, socket, head]);
+			}
+		);
 
-		outgoing.on('error', error => {
+		outgoing.on('error', (error) => {
 			reject(outgoingError(error));
 		});
 	});

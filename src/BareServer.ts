@@ -1,33 +1,25 @@
-import registerV1 from './V1.js';
-import registerV2 from './V2.js';
-import { Request, Response, writeResponse } from './AbstractMessage.js';
+import registerV1 from './V1';
+import registerV2 from './V2';
+import { Request, Response, writeResponse } from './AbstractMessage';
+import { Duplex } from 'stream';
 import http from 'http';
 import https from 'https';
 import createHttpError from 'http-errors';
+import { BareHeaders } from './requestUtil';
 
-/**
- * @typedef {Object.<string, string|string[]>} BareHeaders
- */
+export interface BareErrorBody {
+	code: string;
+	id: string;
+	message?: string;
+	stack?: string;
+}
 
-/**
- *
- * Bare Error
- */
 export class BareError extends Error {
-	/**
-	 *
-	 * @param {number} status
-	 * @param {BareErrorBody} body
-	 */
-	constructor(status, body) {
+	status: number;
+	body: BareErrorBody;
+	constructor(status: number, body: BareErrorBody) {
 		super(body.message || body.code);
-		/**
-		 * @type {number}
-		 */
 		this.status = status;
-		/**
-		 * @type {BareErrorBody}
-		 */
 		this.body = body;
 	}
 }
@@ -37,61 +29,79 @@ const project = {
 	repository: 'https://github.com/tomphttp/bare-server-node',
 };
 
-export function json(status, json) {
+export function json(status: number, json: any) {
 	const send = Buffer.from(JSON.stringify(json, null, '\t'));
 
 	return new Response(send, {
 		status,
 		headers: {
 			'content-type': 'application/json',
-			'content-length': send.byteLength,
+			'content-length': send.byteLength.toString(),
 		},
 	});
 }
 
-/**
- * @typedef {object} BareMaintainer
- * @property {string} [email]
- * @property {string} [website]
- */
+export type BareMaintainer = {
+	email?: string;
+	website?: string;
+};
 
-/**
- * @typedef {object} BareProject
- * @property {string} [name]
- * @property {string} [description]
- * @property {string} [email]
- * @property {string} [website]
- * @property {string} [repository]
- */
+export type BareProject = {
+	name?: string;
+	description?: string;
+	email?: string;
+	website?: string;
+	repository?: string;
+};
 
-/**
- * @typedef {'JS'|'TS'|'Java'|'PHP'|'Rust'|'C'|'C++'|'C#'|'Ruby'|'Go'|'Crystal'|'Bash'|string} BareLanguage
- */
+export type BareLanguage =
+	| 'JS'
+	| 'TS'
+	| 'Java'
+	| 'PHP'
+	| 'Rust'
+	| 'C'
+	| 'C++'
+	| 'C#'
+	| 'Ruby'
+	| 'Go'
+	| 'Crystal'
+	| 'Bash'
+	| string;
 
-/**
- * @typedef {object} BareManifest
- * @property {string} [maintainer]
- * @property {string} [project]
- * @property {string[]} versions
- * @property {BareLanguage} [language]
- * @property {number} [memoryUsage]
- */
+export type BareManifest = {
+	maintainer?: BareMaintainer;
+	project?: BareProject;
+	versions: string[];
+	language: BareLanguage;
+	memoryUsage?: number;
+};
 
-/**
- * @typedef {object} BareServerInit
- * @property {boolean} [logErrors]
- * @property {string} [localAddress]
- * @property {BareMaintainer} [maintainer]
- */
-// directory, logErrors = false, localAddress, maintainer
+export interface BareServerInit {
+	logErrors?: boolean;
+	localAddress?: string;
+	maintainer?: BareMaintainer;
+}
 
 export default class Server {
-	/**
-	 *
-	 * @param {string} directory
-	 * @param {BareServerInit} init
-	 */
-	constructor(directory, init = {}) {
+	directory: string;
+	logErrors: boolean;
+	routes: Map<string, (server: Server, request: Request) => Promise<Response>>;
+	socketRoutes: Map<
+		string,
+		(
+			server: Server,
+			request: Request,
+			socket: import('stream').Duplex,
+			head: Buffer
+		) => void
+	>;
+	onClose: Set<() => void>;
+	httpAgent: http.Agent;
+	httpsAgent: https.Agent;
+	localAddress?: string;
+	maintainer?: BareMaintainer;
+	constructor(directory: string, init: BareServerInit = {}) {
 		if (init.logErrors) {
 			/**
 			 * @type {boolean}
@@ -101,30 +111,15 @@ export default class Server {
 			this.logErrors = false;
 		}
 
-		/**
-		 * @type {Map<string, (server: Server, request: Request) => Promise<Response>>}
-		 */
 		this.routes = new Map();
-		/**
-		 * @type {Map<string, (server: Server, request: Request, socket: import('stream').Duplex, head: Buffer) => Promise<Response>>}
-		 */
 		this.socketRoutes = new Map();
-		/**
-		 * @type {Set<() => void>}
-		 */
 		this.onClose = new Set();
 
-		/**
-		 * @type {http.Agent}
-		 */
-		this.httpAgent = http.Agent({
+		this.httpAgent = new http.Agent({
 			keepAlive: true,
 		});
 
-		/**
-		 * @type {https.Agent}
-		 */
-		this.httpsAgent = https.Agent({
+		this.httpsAgent = new https.Agent({
 			keepAlive: true,
 		});
 
@@ -133,9 +128,6 @@ export default class Server {
 		}
 
 		if (init.maintainer) {
-			/**
-			 * @type {BareMaintainer|undefined}
-			 */
 			this.maintainer = init.maintainer;
 		}
 
@@ -147,12 +139,9 @@ export default class Server {
 			throw new RangeError('Directory must start and end with /');
 		}
 
-		/**
-		 * @type {string}
-		 */
 		this.directory = directory;
 
-		this.routes.set('/', () => {
+		this.routes.set('/', async () => {
 			return json(200, this.instanceInfo);
 		});
 
@@ -167,19 +156,10 @@ export default class Server {
 			callback();
 		}
 	}
-	/**
-	 *
-	 * @param {ClientRequest} request
-	 * @returns {boolean}
-	 */
-	shouldRoute(request) {
-		return request.url.startsWith(this.directory);
+	shouldRoute(request: http.IncomingMessage): boolean {
+		return request.url?.startsWith(this.directory) || false;
 	}
-	/**
-	 *
-	 * @returns {BareManifest}
-	 */
-	get instanceInfo() {
+	get instanceInfo(): BareManifest {
 		return {
 			versions: ['v1', 'v2'],
 			language: 'NodeJS',
@@ -189,23 +169,17 @@ export default class Server {
 			project,
 		};
 	}
-	/**
-	 *
-	 * @param {http.IncomingMessage} req
-	 * @param {import('stream').Duplex} socket
-	 * @param {Buffer} head
-	 */
-	async routeUpgrade(req, socket, head) {
+	async routeUpgrade(req: http.IncomingMessage, socket: Duplex, head: Buffer) {
 		const request = new Request(req, {
-			method: req.method,
-			path: req.url,
-			headers: req.headers,
+			method: req.method!,
+			path: req.url!,
+			headers: <BareHeaders>req.headers,
 		});
 
 		const service = request.url.pathname.slice(this.directory.length - 1);
 
 		if (this.socketRoutes.has(service)) {
-			const call = this.socketRoutes.get(service);
+			const call = this.socketRoutes.get(service)!;
 
 			try {
 				await call(this, request, socket, head);
@@ -220,16 +194,11 @@ export default class Server {
 			socket.end();
 		}
 	}
-	/**
-	 *
-	 * @param {import('node:http').ClientRequest} req
-	 * @param {import('node:http').ServerResponse} res
-	 */
-	async routeRequest(req, res) {
+	async routeRequest(req: http.IncomingMessage, res: http.ServerResponse) {
 		const request = new Request(req, {
-			method: req.method,
-			path: req.url,
-			headers: req.headers,
+			method: req.method!,
+			path: req.url!,
+			headers: <BareHeaders>req.headers,
 		});
 
 		const service = request.url.pathname.slice(this.directory.length - 1);
@@ -239,8 +208,7 @@ export default class Server {
 			if (request.method === 'OPTIONS') {
 				response = new Response(undefined, { status: 200 });
 			} else if (this.routes.has(service)) {
-				const call = this.routes.get(service);
-
+				const call = this.routes.get(service)!;
 				response = await call(this, request);
 			} else {
 				throw new createHttpError.NotFound();
@@ -262,7 +230,7 @@ export default class Server {
 					code: 'UNKNOWN',
 					id: 'error.Exception',
 					message: error,
-					stack: new Error(error).stack,
+					stack: new Error(<string | undefined>error).stack,
 				});
 			}
 

@@ -1,52 +1,50 @@
+import http from 'http';
 import Stream from 'node:stream';
+
 import { Headers } from 'fetch-headers';
 
+import { BareHeaders } from './requestUtil';
+
+export interface RequestInit {
+	method: string;
+	path: string;
+	headers: Headers | BareHeaders;
+}
+
 /**
- * Abstraction for the data written to an IncomingMessage
- * @property {Stream} body
- * @property {string} method
- * @property {Headers} passHeaders
- * @property {URL} url
+ * Abstraction for the data read from IncomingMessage
  */
 export class Request {
-	/**
-	 *
-	 * @param {Stream} body
-	 * @param {{method:string, path: string, headers: Headers|import('./Server.js').BareHeaders}} [param1]
-	 */
-	constructor(body, { method, path, headers } = {}) {
+	body: Stream;
+	method: string;
+	headers: Headers;
+	url: URL;
+	constructor(body: Stream, init: RequestInit) {
 		this.body = body;
-		this.method = method;
-		this.headers = new Headers(headers);
-		this.url = new URL(`http:${headers.host}${path}`);
+		this.method = init.method;
+		this.headers = new Headers(init.headers);
+		this.url = new URL(`http:${this.headers.get('host')}${init.path}`);
 	}
 	get query() {
 		return this.url.searchParams;
 	}
 }
 
-/**
- * @typedef {Buffer|Stream} ResponseBody
- */
+export type ResponseBody = Buffer | Stream;
 
-/**
- * @typedef {object} ResponseInit
- * @property {Headers|import('./Server.js').BareHeaders} [headers]
- * @property {number} [status]
- * @property {string} [statusText]
- */
+export interface ResponseInit {
+	headers?: Headers | BareHeaders;
+	status?: number;
+	statusText?: string;
+}
 
 export class Response {
-	/**
-	 *
-	 * @param {ResponseBody|undefined} body
-	 * @param {ResponseInit} [init]
-	 */
-	constructor(body, init = {}) {
+	body?: ResponseBody;
+	status: number;
+	statusText?: string;
+	headers: Headers;
+	constructor(body: ResponseBody | undefined, init: ResponseInit = {}) {
 		if (body) {
-			/**
-			 * @type {ResponseBody|undefined}
-			 */
 			this.body = body instanceof Stream ? body : Buffer.from(body);
 		}
 
@@ -60,9 +58,6 @@ export class Response {
 		}
 
 		if (typeof init.statusText === 'string') {
-			/**
-			 * @type {string|undefined}
-			 */
 			this.statusText = init.statusText;
 		}
 
@@ -70,13 +65,10 @@ export class Response {
 	}
 }
 
-/**
- *
- * @param {Response} response
- * @param {import('http').OutgoingMessage} res
- * @returns {boolean} Success
- */
-export function writeResponse(response, res) {
+export function writeResponse(
+	response: Response,
+	res: http.ServerResponse
+): boolean {
 	for (const [header, value] of response.headers) {
 		res.setHeader(header, value);
 	}

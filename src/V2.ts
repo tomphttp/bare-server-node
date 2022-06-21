@@ -1,15 +1,18 @@
-import { Response } from './AbstractMessage.js';
-import { Headers } from 'fetch-headers';
-import { splitHeaders, joinHeaders } from './splitHeaderUtil.js';
-import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
+import { Duplex } from 'stream';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
-import { BareError } from './Server.js';
-import { fetch, upgradeFetch } from './requestUtil.js';
 
-const validProtocols = ['http:', 'https:', 'ws:', 'wss:'];
+import { Headers } from 'fetch-headers';
 
-const forbiddenForwardHeaders = [
+import { Request, Response } from './AbstractMessage';
+import Server, { BareError } from './BareServer';
+import { mapHeadersFromArray, rawHeaderNames } from './headerUtil';
+import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil';
+import { joinHeaders, splitHeaders } from './splitHeaderUtil';
+
+const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
+
+const forbiddenForwardHeaders: string[] = [
 	'connection',
 	'transfer-encoding',
 	'host',
@@ -18,7 +21,7 @@ const forbiddenForwardHeaders = [
 	'referer',
 ];
 
-const forbiddenPassHeaders = [
+const forbiddenPassHeaders: string[] = [
 	'vary',
 	'connection',
 	'transfer-encoding',
@@ -31,7 +34,7 @@ const forbiddenPassHeaders = [
 ];
 
 // common defaults
-const defaultForwardHeaders = [
+const defaultForwardHeaders: string[] = [
 	'accept-encoding',
 	'accept-language',
 	'sec-websocket-extensions',
@@ -39,61 +42,51 @@ const defaultForwardHeaders = [
 	'sec-websocket-version',
 ];
 
-const defaultPassHeaders = [
+const defaultPassHeaders: string[] = [
 	'content-encoding',
 	'content-length',
 	'last-modified',
 ];
 
-const defaultPassStatus = [];
-
 // defaults if the client provides a cache key
-const defaultCacheForwardHeaders = [
+const defaultCacheForwardHeaders: string[] = [
 	'if-modified-since',
 	'if-none-match',
 	'cache-control',
 ];
 
-const defaultCachePassHeaders = ['cache-control', 'etag'];
-const defaultCachePassStatus = [304];
+const defaultCachePassHeaders: string[] = ['cache-control', 'etag'];
+const defaultCachePassStatus: number[] = [304];
 
 const randomBytesAsync = promisify(randomBytes);
 
-/**
- *
- * @param {string[]} forward
- * @param {import('./Server.js').BareHeaders} target
- * @param {Request} request
- */
-function loadForwardedHeaders(forward, target, request) {
+function loadForwardedHeaders(
+	forward: string[],
+	target: BareHeaders,
+	request: Request
+) {
 	for (const header of forward) {
 		if (request.headers.has(header)) {
-			target[header] = request.headers.get(header);
+			target[header] = request.headers.get(header)!;
 		}
 	}
 }
 
 const splitHeaderValue = /,\s*/g;
 
-/**
- * @typedef {object} BareHeaderData
- * @property {BareRemote} remote
- * @property {import('./Server.js').BareHeaders} sendHeaders
- * @property {string[]} passHeaders
- * @property {number[]} passStatus
- * @property {string[]} forwardHeaders
- */
+interface BareHeaderData {
+	remote: BareRemote;
+	sendHeaders: BareHeaders;
+	passHeaders: string[];
+	passStatus: number[];
+	forwardHeaders: string[];
+}
 
-/**
- *
- * @param {Request} request
- * @returns {BareHeaderData}
- */
-function readHeaders(request) {
+function readHeaders(request: Request): BareHeaderData {
 	const remote = Object.setPrototypeOf({}, null);
 	const sendHeaders = Object.setPrototypeOf({}, null);
 	const passHeaders = [...defaultPassHeaders];
-	const passStatus = [...defaultPassStatus];
+	const passStatus = [];
 	const forwardHeaders = [...defaultForwardHeaders];
 
 	// should be unique
@@ -111,12 +104,11 @@ function readHeaders(request) {
 		const header = `x-bare-${remoteProp}`;
 
 		if (headers.has(header)) {
-			let value = headers.get(header);
+			const value = headers.get(header)!;
 
 			switch (remoteProp) {
 				case 'port':
-					value = parseInt(value);
-					if (isNaN(value)) {
+					if (isNaN(parseInt(value))) {
 						throw new BareError(400, {
 							code: 'INVALID_BARE_HEADER',
 							id: `request.headers.${header}`,
@@ -147,7 +139,7 @@ function readHeaders(request) {
 
 	if (headers.has('x-bare-headers')) {
 		try {
-			const json = JSON.parse(headers.get('x-bare-headers'));
+			const json = JSON.parse(headers.get('x-bare-headers')!);
 
 			for (const header in json) {
 				const value = json[header];
@@ -198,7 +190,7 @@ function readHeaders(request) {
 	}
 
 	if (headers.has('x-bare-pass-status')) {
-		const parsed = headers.get('x-bare-pass-status').split(splitHeaderValue);
+		const parsed = headers.get('x-bare-pass-status')!.split(splitHeaderValue);
 
 		for (const value of parsed) {
 			const number = parseInt(value);
@@ -216,7 +208,7 @@ function readHeaders(request) {
 	}
 
 	if (headers.has('x-bare-pass-headers')) {
-		const parsed = headers.get('x-bare-pass-headers').split(splitHeaderValue);
+		const parsed = headers.get('x-bare-pass-headers')!.split(splitHeaderValue);
 
 		for (let header of parsed) {
 			header = header.toLowerCase();
@@ -235,7 +227,7 @@ function readHeaders(request) {
 
 	if (headers.has('x-bare-forward-headers')) {
 		const parsed = headers
-			.get('x-bare-forward-headers')
+			.get('x-bare-forward-headers')!
 			.split(splitHeaderValue);
 
 		for (let header of parsed) {
@@ -262,13 +254,10 @@ function readHeaders(request) {
 	};
 }
 
-/**
- *
- * @param {import('./Server.js').default} server
- * @param {import('./AbstractMessage.js').Request} request
- * @returns {Promise<Response>}
- */
-async function tunnelRequest(server, request) {
+async function tunnelRequest(
+	server: Server,
+	request: Request
+): Promise<Response> {
 	const { remote, sendHeaders, passHeaders, passStatus, forwardHeaders } =
 		readHeaders(request);
 
@@ -284,10 +273,10 @@ async function tunnelRequest(server, request) {
 		}
 	}
 
-	let status;
+	let status: number;
 
-	if (passStatus.includes(response.statusCode)) {
-		status = response.statusCode;
+	if (passStatus.includes(response.statusCode!)) {
+		status = response.statusCode!;
 	} else {
 		status = 200;
 	}
@@ -299,7 +288,7 @@ async function tunnelRequest(server, request) {
 			'x-bare-headers',
 			JSON.stringify(
 				mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {
-					...response.headers,
+					...<BareHeaders>response.headers,
 				})
 			)
 		);
@@ -311,30 +300,21 @@ async function tunnelRequest(server, request) {
 	});
 }
 
-/**
- * @typedef {object} Meta
- * @property {{status:number,statusText:string,headers:import('./Server.js').BareHeaders}} [response]
- * @property {number} set
- * @property {import('./Server.js').BareHeaders} sendHeaders
- * @property {string[]} forwardHeaders
- */
+interface Meta {
+	response?: { status: number; statusText: string; headers: BareHeaders };
+	set: number;
+	sendHeaders: BareHeaders,
+	remote: BareRemote,
+	forwardHeaders: string[],
+}
 
-/**
- * @type {Map<string, Meta>}
- */
-const tempMeta = new Map();
+const tempMeta: Map<string, Meta> = new Map();
 
 const metaExpiration = 30e3;
 
-/**
- *
- * @param {import('./Server.js').default} server
- * @param {Request} request
- * @returns {Promise<Response>}
- */
-async function getMeta(server, request) {
+async function getMeta(server: Server, request: Request): Promise<Response> {
 	if (request.method === 'OPTIONS') {
-		return new Response(undefined, 200);
+		return new Response(undefined, { status: 200 });
 	}
 
 	if (!request.headers.has('x-bare-id')) {
@@ -345,7 +325,7 @@ async function getMeta(server, request) {
 		});
 	}
 
-	const id = request.headers.get('x-bare-id');
+	const id = request.headers.get('x-bare-id')!;
 
 	if (!tempMeta.has(id)) {
 		throw new BareError(400, {
@@ -355,7 +335,7 @@ async function getMeta(server, request) {
 		});
 	}
 
-	const meta = tempMeta.get(id);
+	const meta = tempMeta.get(id)!;
 
 	if (!meta.response) {
 		throw new BareError(400, {
@@ -373,16 +353,13 @@ async function getMeta(server, request) {
 	responseHeaders.set('x-bare-status-text', meta.response.statusText);
 	responseHeaders.set('x-bare-headers', JSON.stringify(meta.response.headers));
 
-	return new Response(undefined, 200, splitHeaders(responseHeaders));
+	return new Response(undefined, {
+		status: 200,
+		headers: splitHeaders(responseHeaders),
+	});
 }
 
-/**
- *
- * @param {import('./Server.js').default} server
- * @param {import('./AbstractMessage.js').Request} request
- * @returns {Promise<Response>}
- */
-async function newMeta(server, request) {
+async function newMeta(server: Server, request: Request): Promise<Response> {
 	const { remote, sendHeaders, forwardHeaders } = readHeaders(request);
 
 	const id = (await randomBytesAsync(32)).toString('hex');
@@ -397,20 +374,20 @@ async function newMeta(server, request) {
 	return new Response(Buffer.from(id));
 }
 
-async function tunnelSocket(server, request, socket) {
+async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 	if (!request.headers.has('sec-websocket-protocol')) {
 		socket.end();
 		return;
 	}
 
-	const id = request.headers.get('sec-websocket-protocol');
+	const id = request.headers.get('sec-websocket-protocol')!;
 
 	if (!tempMeta.has(id)) {
 		socket.end();
 		return;
 	}
 
-	const meta = tempMeta.get(id);
+	const meta = tempMeta.get(id)!;
 
 	loadForwardedHeaders(meta.forwardHeaders, meta.sendHeaders, request);
 
@@ -425,10 +402,10 @@ async function tunnelSocket(server, request, socket) {
 
 	meta.response = {
 		headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
-			...remoteResponse.headers,
+			...<BareHeaders>remoteResponse.headers,
 		}),
-		status: remoteResponse.statusCode,
-		statusText: remoteResponse.statusMessage,
+		status: remoteResponse.statusCode!,
+		statusText: remoteResponse.statusMessage!,
 	};
 
 	const responseHeaders = [
@@ -462,13 +439,19 @@ async function tunnelSocket(server, request, socket) {
 		remoteSocket.end();
 	});
 
-	remoteSocket.on('error', error => {
-		server.error('Remote socket error:', error);
+	remoteSocket.on('error', (error) => {
+		if (server.logErrors) {
+			console.error('Remote socket error:', error);
+		}
+
 		socket.end();
 	});
 
-	socket.on('error', error => {
-		server.error('Serving socket error:', error);
+	socket.on('error', (error) => {
+		if (server.logErrors) {
+			console.error('Serving socket error:', error);
+		}
+
 		remoteSocket.end();
 	});
 
@@ -476,11 +459,7 @@ async function tunnelSocket(server, request, socket) {
 	socket.pipe(remoteSocket);
 }
 
-/**
- *
- * @param {import('./Server.js').default} server
- */
-export default function registerV2(server) {
+export default function registerV2(server: Server) {
 	server.routes.set('/v2/', tunnelRequest);
 	server.routes.set('/v2/ws-new-meta', newMeta);
 	server.routes.set('/v2/ws-meta', getMeta);

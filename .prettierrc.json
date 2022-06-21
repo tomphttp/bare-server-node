@@ -1,5 +1,13 @@
 {
 	"useTabs": true,
 	"arrowParens": "avoid",
-	"singleQuote": true
+	"singleQuote": true,
+	"overrides": [
+		{
+			"files": "*.ts",
+			"options": {
+				"parser": "babel-ts"
+			}
+		}
+	]
 }

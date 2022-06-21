@@ -1,60 +1,44 @@
-import { Response } from './AbstractMessage.js';
+import { Request, Response } from './AbstractMessage';
 import { Headers } from 'fetch-headers';
-import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
-import { decodeProtocol } from './encodeProtocol.js';
+import { mapHeadersFromArray, rawHeaderNames } from './headerUtil';
+import { decodeProtocol } from './encodeProtocol';
 import { randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
-import { BareError, json } from './Server.js';
-import { fetch, upgradeFetch } from './requestUtil.js';
+import { Duplex } from 'stream';
+import Server, { BareError, json } from './BareServer';
+import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil';
 
-/**
- * @typedef {object} BareRemote
- * @property {string} host
- * @property {number|string} port
- * @property {string} path
- * @property {string} protocol
- */
-
-const validProtocols = ['http:', 'https:', 'ws:', 'wss:'];
+const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 
 const randomBytesAsync = promisify(randomBytes);
 
-function loadForwardedHeaders(forward, target, request) {
+function loadForwardedHeaders(forward: string[], target: BareHeaders, request: Request) {
 	for (const header of forward) {
 		if (request.headers.has(header)) {
-			target[header] = request.headers.get(header);
+			target[header] = request.headers.get(header)!;
 		}
 	}
 }
 
-/**
- * @typedef {object} BareHeaderData
- * @property {BareRemote} remote
- * @property {import('./Server.js').BareHeaders} sendHeaders
- * @property {string[]} passHeaders
- * @property {number[]} passStatus
- * @property {string[]} forwardHeaders
- */
+interface BareHeaderData {
+	remote: BareRemote;
+	headers: BareHeaders;
+}
 
-/**
- *
- * @param {import('./AbstractMessage').Request} request
- * @returns {BareHeaderData}
- */
-function readHeaders(request) {
-	const remote = Object.setPrototypeOf({}, null);
-	const headers = Object.setPrototypeOf({}, null);
+function readHeaders(request: Request): BareHeaderData {
+	const remote: Partial<BareRemote> & { [key: string]: string | number } = {};
+	const headers: BareHeaders = {};
+	Reflect.setPrototypeOf(headers, null);
 
 	for (const remoteProp of ['host', 'port', 'protocol', 'path']) {
 		const header = `x-bare-${remoteProp}`;
 
 		if (request.headers.has(header)) {
-			let value = request.headers.get(header);
+			const value = request.headers.get(header)!;
 
 			switch (remoteProp) {
 				case 'port':
-					value = parseInt(value);
-					if (isNaN(value)) {
+					if (isNaN(parseInt(value))) {
 						throw new BareError(400, {
 							code: 'INVALID_BARE_HEADER',
 							id: `request.headers.${header}`,
@@ -85,7 +69,7 @@ function readHeaders(request) {
 
 	if (request.headers.has('x-bare-headers')) {
 		try {
-			const json = JSON.parse(request.headers.get('x-bare-headers'));
+			const json = JSON.parse(request.headers.get('x-bare-headers')!);
 
 			for (const header in json) {
 				if (typeof json[header] !== 'string' && !Array.isArray(json[header])) {
@@ -121,12 +105,14 @@ function readHeaders(request) {
 		let json;
 
 		try {
-			json = JSON.parse(request.headers.get('x-bare-forward-headers'));
+			json = JSON.parse(request.headers.get('x-bare-forward-headers')!);
 		} catch (error) {
 			throw new BareError(400, {
 				code: 'INVALID_BARE_HEADER',
 				id: `request.headers.x-bare-forward-headers`,
-				message: `Header contained invalid JSON. (${error.message})`,
+				message: `Header contained invalid JSON. (${
+					error instanceof Error ? error.message : error
+				})`,
 			});
 		}
 
@@ -139,16 +125,13 @@ function readHeaders(request) {
 		});
 	}
 
-	return { remote, headers };
+	return { remote: <BareRemote>remote, headers };
 }
 
-/**
- *
- * @param {import('./Server.js').default} server
- * @param {import('./AbstractMessage.js').Request} request
- * @returns {Promise<Response>}
- */
-async function tunnelRequest(server, request) {
+async function tunnelRequest(
+	server: Server,
+	request: Request
+): Promise<Response> {
 	const { remote, headers } = readHeaders(request);
 
 	const response = await fetch(server, request, headers, remote);
@@ -167,7 +150,7 @@ async function tunnelRequest(server, request) {
 		'x-bare-headers',
 		JSON.stringify(
 			mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {
-				...response.headers,
+				...<BareHeaders>response.headers,
 			})
 		)
 	);
@@ -177,26 +160,18 @@ async function tunnelRequest(server, request) {
 	return new Response(response, { status: 200, headers: responseHeaders });
 }
 
-/**
- * @typedef {object} Meta
- * @property {{headers:import('./Server.js').BareHeaders}} [response]
- * @property {number} set
- */
+interface Meta {
+	response?: {
+		headers: BareHeaders;
+	};
+	set: number;
+}
 
-/**
- * @type {Map<string, Meta>}
- */
-const tempMeta = new Map();
+const tempMeta: Map<string, Meta> = new Map();
 
 const metaExpiration = 30e3;
 
-/**
- *
- * @param {import('./Server.js').default} server
- * @param {import('./AbstractMessage.js').Request} request
- * @returns {Promise<Response>}
- */
-async function wsMeta(server, request) {
+async function wsMeta(server: Server, request: Request): Promise<Response> {
 	if (request.method === 'OPTIONS') {
 		return new Response(undefined, { status: 200 });
 	}
@@ -209,7 +184,7 @@ async function wsMeta(server, request) {
 		});
 	}
 
-	const id = request.headers.get('x-bare-id');
+	const id = request.headers.get('x-bare-id')!;
 
 	if (!tempMeta.has(id)) {
 		throw new BareError(400, {
@@ -219,12 +194,12 @@ async function wsMeta(server, request) {
 		});
 	}
 
-	const meta = tempMeta.get(id);
+	const meta = tempMeta.get(id)!;
 
 	tempMeta.delete(id);
 
 	return json(200, {
-		headers: meta.response.headers,
+		headers: meta.response?.headers,
 	});
 }
 
@@ -239,23 +214,17 @@ async function wsNewMeta() {
 		set: Date.now(),
 	});
 
-	return new Response(Buffer.from(id.toString('hex')));
+	return new Response(Buffer.from(id));
 }
 
-/**
- *
- * @param {import('./Server.js').default} server
- * @param {import('./AbstractMessage.js').Request} request
- * @param {import('stream').Duplex} socket
- */
-async function tunnelSocket(server, request, socket) {
+async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 	if (!request.headers.has('sec-websocket-protocol')) {
 		socket.end();
 		return;
 	}
 
 	const [firstProtocol, data] = request.headers
-		.get('sec-websocket-protocol')
+		.get('sec-websocket-protocol')!
 		.split(/,\s*/g);
 
 	if (firstProtocol !== 'bare') {
@@ -280,9 +249,9 @@ async function tunnelSocket(server, request, socket) {
 	);
 
 	if (tempMeta.has(id)) {
-		tempMeta.get(id).response = {
+		tempMeta.get(id)!.response = {
 			headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
-				...remoteResponse.headers,
+				...<BareHeaders>remoteResponse.headers,
 			}),
 		};
 	}
@@ -313,13 +282,17 @@ async function tunnelSocket(server, request, socket) {
 		remoteSocket.end();
 	});
 
-	remoteSocket.on('error', error => {
-		server.error('Remote socket error:', error);
+	remoteSocket.on('error', (error) => {
+		if (server.logErrors) {
+			console.error('Remote socket error:', error);
+		}
 		socket.end();
 	});
 
-	socket.on('error', error => {
-		server.error('Serving socket error:', error);
+	socket.on('error', (error) => {
+		if (server.logErrors) {
+			console.error('Serving socket error:', error);
+		}
 		remoteSocket.end();
 	});
 
@@ -327,11 +300,7 @@ async function tunnelSocket(server, request, socket) {
 	socket.pipe(remoteSocket);
 }
 
-/**
- *
- * @param {import('./Server.js').default} server
- */
-export default function registerV1(server) {
+export default function registerV1(server: Server) {
 	server.routes.set('/v1/', tunnelRequest);
 	server.routes.set('/v1/ws-new-meta', wsNewMeta);
 	server.routes.set('/v1/ws-meta', wsMeta);

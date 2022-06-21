@@ -1,8 +1,11 @@
 #!/usr/bin/env node
+
+import { Server as HTTPServer } from 'node:http';
+
 import { Command } from 'commander';
 import { config } from 'dotenv';
-import { Server as HTTPServer } from 'node:http';
-import BareServer from '../src/Server.js';
+
+import BareServer from '../dist/BareServer.esm.js';
 
 config();
 
