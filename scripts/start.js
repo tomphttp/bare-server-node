@@ -5,7 +5,7 @@ import { Server as HTTPServer } from 'node:http';
 import { Command } from 'commander';
 import { config } from 'dotenv';
 
-import BareServer from '../dist/BareServer.esm.js';
+import createServer from '../dist/BareServer.esm.js';
 
 config();
 
@@ -27,7 +27,7 @@ program
 		process.env.LOCAL_ADDRESS
 	)
 	.action(({ directory, errors, host, port, localAddress }) => {
-		const bare = new BareServer(directory, errors, localAddress);
+		const bare = createServer(directory, { errors, localAddress });
 		console.info('Created Bare Server on directory:', directory);
 		console.info('Error logging is', errors ? 'enabled.' : 'disabled.');
 
