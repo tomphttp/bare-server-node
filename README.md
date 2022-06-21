@@ -19,7 +19,7 @@ npm install --global @tomphttp/bare-server-node
 2. Start the server
 
 ```sh
-npx @tomphttp/bare-server-node
+npx bare-server-node
 ```
 
 Optionally start the server localhost:8080
