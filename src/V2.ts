@@ -1,6 +1,6 @@
 import { Duplex } from 'stream';
-import { randomBytes } from 'node:crypto';
-import { promisify } from 'node:util';
+import { randomBytes } from 'crypto';
+import { promisify } from 'util';
 
 import { Headers } from 'fetch-headers';
 
@@ -288,7 +288,7 @@ async function tunnelRequest(
 			'x-bare-headers',
 			JSON.stringify(
 				mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {
-					...<BareHeaders>response.headers,
+					...(<BareHeaders>response.headers),
 				})
 			)
 		);
@@ -303,9 +303,9 @@ async function tunnelRequest(
 interface Meta {
 	response?: { status: number; statusText: string; headers: BareHeaders };
 	set: number;
-	sendHeaders: BareHeaders,
-	remote: BareRemote,
-	forwardHeaders: string[],
+	sendHeaders: BareHeaders;
+	remote: BareRemote;
+	forwardHeaders: string[];
 }
 
 const tempMeta: Map<string, Meta> = new Map();
@@ -402,7 +402,7 @@ async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 
 	meta.response = {
 		headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
-			...<BareHeaders>remoteResponse.headers,
+			...(<BareHeaders>remoteResponse.headers),
 		}),
 		status: remoteResponse.statusCode!,
 		statusText: remoteResponse.statusMessage!,
@@ -439,7 +439,7 @@ async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 		remoteSocket.end();
 	});
 
-	remoteSocket.on('error', (error) => {
+	remoteSocket.on('error', error => {
 		if (server.logErrors) {
 			console.error('Remote socket error:', error);
 		}
@@ -447,7 +447,7 @@ async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 		socket.end();
 	});
 
-	socket.on('error', (error) => {
+	socket.on('error', error => {
 		if (server.logErrors) {
 			console.error('Serving socket error:', error);
 		}

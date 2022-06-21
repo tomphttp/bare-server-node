@@ -1,5 +1,5 @@
-import http from 'node:http';
-import https from 'node:https';
+import http from 'http';
+import https from 'https';
 import { Request, RequestInit } from './AbstractMessage';
 import Server, { BareError } from './BareServer';
 import { Duplex } from 'stream';
@@ -144,7 +144,7 @@ export async function upgradeFetch(
 			}
 		);
 
-		outgoing.on('error', (error) => {
+		outgoing.on('error', error => {
 			reject(outgoingError(error));
 		});
 	});

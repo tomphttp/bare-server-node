@@ -1,5 +1,3 @@
-import registerV1 from './V1';
-import registerV2 from './V2';
 import { Request, Response, writeResponse } from './AbstractMessage';
 import { Duplex } from 'stream';
 import http from 'http';
@@ -83,14 +81,17 @@ export interface BareServerInit {
 	maintainer?: BareMaintainer;
 }
 
-export default class Server {
+export default class BareServer {
 	directory: string;
 	logErrors: boolean;
-	routes: Map<string, (server: Server, request: Request) => Promise<Response>>;
+	routes: Map<
+		string,
+		(server: BareServer, request: Request) => Promise<Response>
+	>;
 	socketRoutes: Map<
 		string,
 		(
-			server: Server,
+			server: BareServer,
 			request: Request,
 			socket: import('stream').Duplex,
 			head: Buffer
@@ -144,9 +145,6 @@ export default class Server {
 		this.routes.set('/', async () => {
 			return json(200, this.instanceInfo);
 		});
-
-		registerV1(this);
-		registerV2(this);
 	}
 	/**
 	 * Remove all timers and listeners

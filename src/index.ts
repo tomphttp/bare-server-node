@@ -1,2 +1,4 @@
-import BareServer from './BareServer';
-export default BareServer;
+export * from './BareServer';
+import createServer from './createServer';
+
+export default createServer;

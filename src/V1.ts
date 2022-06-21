@@ -2,8 +2,8 @@ import { Request, Response } from './AbstractMessage';
 import { Headers } from 'fetch-headers';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil';
 import { decodeProtocol } from './encodeProtocol';
-import { randomBytes } from 'node:crypto';
-import { promisify } from 'node:util';
+import { randomBytes } from 'crypto';
+import { promisify } from 'util';
 import { Duplex } from 'stream';
 import Server, { BareError, json } from './BareServer';
 import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil';
@@ -12,7 +12,11 @@ const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 
 const randomBytesAsync = promisify(randomBytes);
 
-function loadForwardedHeaders(forward: string[], target: BareHeaders, request: Request) {
+function loadForwardedHeaders(
+	forward: string[],
+	target: BareHeaders,
+	request: Request
+) {
 	for (const header of forward) {
 		if (request.headers.has(header)) {
 			target[header] = request.headers.get(header)!;
@@ -150,7 +154,7 @@ async function tunnelRequest(
 		'x-bare-headers',
 		JSON.stringify(
 			mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {
-				...<BareHeaders>response.headers,
+				...(<BareHeaders>response.headers),
 			})
 		)
 	);
@@ -251,7 +255,7 @@ async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 	if (tempMeta.has(id)) {
 		tempMeta.get(id)!.response = {
 			headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
-				...<BareHeaders>remoteResponse.headers,
+				...(<BareHeaders>remoteResponse.headers),
 			}),
 		};
 	}
@@ -282,14 +286,14 @@ async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 		remoteSocket.end();
 	});
 
-	remoteSocket.on('error', (error) => {
+	remoteSocket.on('error', error => {
 		if (server.logErrors) {
 			console.error('Remote socket error:', error);
 		}
 		socket.end();
 	});
 
-	socket.on('error', (error) => {
+	socket.on('error', error => {
 		if (server.logErrors) {
 			console.error('Serving socket error:', error);
 		}

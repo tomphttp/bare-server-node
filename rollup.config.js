@@ -1,9 +1,11 @@
 import babel from '@rollup/plugin-babel';
+import commonjs from '@rollup/plugin-commonjs';
+import nodeResolve from '@rollup/plugin-node-resolve';
 import typescript from 'rollup-plugin-typescript2';
 
 export default [
-	['esm', 'src/BareServer.ts', 'named'], // import
-	['umd', 'src/index.ts', 'default'], // require
+	['esm', 'src/index.ts', 'named'], // import
+	['umd', 'src/createServer.ts', 'default'], // require
 ].map(([format, input, exports]) => ({
 	input,
 	output: {
@@ -12,7 +14,10 @@ export default [
 		name: 'BareServer',
 		exports,
 	},
+	external: [...Object.keys(process.binding('natives')), 'http-errors'],
 	plugins: [
+		nodeResolve({ modulesOnly: true }),
+		commonjs(),
 		typescript(),
 		babel({ babelHelpers: 'bundled', extensions: ['.ts'] }),
 	],

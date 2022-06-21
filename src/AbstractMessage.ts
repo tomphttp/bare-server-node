@@ -1,5 +1,5 @@
 import http from 'http';
-import Stream from 'node:stream';
+import Stream from 'stream';
 
 import { Headers } from 'fetch-headers';
 
