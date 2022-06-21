@@ -1,6 +1,6 @@
 import http from 'http';
 import https from 'https';
-import { Request, RequestInit } from './AbstractMessage';
+import { Request } from './AbstractMessage';
 import Server, { BareError } from './BareServer';
 import { Duplex } from 'stream';
 
