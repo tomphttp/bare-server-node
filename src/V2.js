@@ -313,7 +313,7 @@ async function tunnelRequest(server, request) {
 
 /**
  * @typedef {object} Meta
- * @property {import('http').IncomingMessage} [response]
+ * @property {{status:number,statusText:string,headers:import('./Server.js').BareHeaders}} [response]
  * @property {number} set
  * @property {import('./Server.js').BareHeaders} sendHeaders
  * @property {string[]} forwardHeaders
@@ -369,16 +369,9 @@ async function getMeta(server, request) {
 
 	const responseHeaders = new Headers();
 
-	responseHeaders.set('x-bare-status', meta.response.statusCode);
-	responseHeaders.set('x-bare-status-text', meta.response.statusMessage);
-	responseHeaders.set(
-		'x-bare-headers',
-		JSON.stringify(
-			mapHeadersFromArray(rawHeaderNames(meta.response.rawHeaders), {
-				...meta.response.headers,
-			})
-		)
-	);
+	responseHeaders.set('x-bare-status', meta.response.status);
+	responseHeaders.set('x-bare-status-text', meta.response.statusText);
+	responseHeaders.set('x-bare-headers', JSON.stringify(meta.response.headers));
 
 	return new Response(undefined, 200, splitHeaders(responseHeaders));
 }
@@ -430,7 +423,13 @@ async function tunnelSocket(server, request, socket) {
 
 	const remoteHeaders = new Headers(remoteResponse.headers);
 
-	meta.response = remoteResponse;
+	meta.response = {
+		headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
+			...remoteResponse.headers,
+		}),
+		status: remoteResponse.statusCode,
+		statusText: remoteResponse.statusMessage,
+	};
 
 	const responseHeaders = [
 		`HTTP/1.1 101 Switching Protocols`,

@@ -179,7 +179,7 @@ async function tunnelRequest(server, request) {
 
 /**
  * @typedef {object} Meta
- * @property {import('http').OutgoingMessage} [response]
+ * @property {{headers:import('./Server.js').BareHeaders}} [response]
  * @property {number} set
  */
 
@@ -224,7 +224,7 @@ async function wsMeta(server, request) {
 	tempMeta.delete(id);
 
 	return json(200, {
-		remote: meta.remote,
+		headers: meta.response.headers,
 	});
 }
 
@@ -247,7 +247,6 @@ async function wsNewMeta() {
  * @param {import('./Server.js').default} server
  * @param {import('./AbstractMessage.js').Request} request
  * @param {import('stream').Duplex} socket
- * @returns
  */
 async function tunnelSocket(server, request, socket) {
 	if (!request.headers.has('sec-websocket-protocol')) {
@@ -281,7 +280,11 @@ async function tunnelSocket(server, request, socket) {
 	);
 
 	if (tempMeta.has(id)) {
-		tempMeta.get(id).response = remoteResponse;
+		tempMeta.get(id).response = {
+			headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
+				...remoteResponse.headers,
+			}),
+		};
 	}
 
 	const responseHeaders = [
