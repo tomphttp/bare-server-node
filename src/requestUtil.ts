@@ -1,8 +1,11 @@
 import http from 'http';
 import https from 'https';
 import { Request } from './AbstractMessage';
-import Server, { BareError } from './BareServer';
+import { BareError, ServerConfig } from './BareServer';
 import { Duplex } from 'stream';
+
+const httpAgent = new http.Agent();
+const httpsAgent = new https.Agent();
 
 export interface BareRemote {
 	host: string;
@@ -66,7 +69,7 @@ function outgoingError<T>(error: T): T | BareError {
  */
 
 export async function fetch(
-	server: Server,
+	config: ServerConfig,
 	request: Request,
 	requestHeaders: BareHeaders,
 	url: BareRemote
@@ -78,15 +81,15 @@ export async function fetch(
 		method: request.method,
 		headers: requestHeaders,
 		setHost: false,
-		localAddress: server.localAddress,
+		localAddress: config.localAddress,
 	};
 
 	let outgoing: http.ClientRequest;
 
 	if (url.protocol === 'https:') {
-		outgoing = https.request({ ...options, agent: server.httpsAgent });
+		outgoing = https.request({ ...options, agent: httpsAgent });
 	} else if (url.protocol === 'http:') {
-		outgoing = http.request({ ...options, agent: server.httpAgent });
+		outgoing = http.request({ ...options, agent: httpAgent });
 	} else {
 		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 	}
@@ -105,7 +108,7 @@ export async function fetch(
 }
 
 export async function upgradeFetch(
-	server: Server,
+	serverConfig: ServerConfig,
 	request: Request,
 	requestHeaders: BareHeaders,
 	remote: BareRemote
@@ -117,15 +120,15 @@ export async function upgradeFetch(
 		headers: requestHeaders,
 		method: request.method,
 		setHost: false,
-		localAddress: server.localAddress,
+		localAddress: serverConfig.localAddress,
 	};
 
 	let outgoing: http.ClientRequest;
 
 	if (remote.protocol === 'wss:') {
-		outgoing = https.request({ ...options, agent: server.httpsAgent });
+		outgoing = https.request({ ...options, agent: httpsAgent });
 	} else if (remote.protocol === 'ws:') {
-		outgoing = http.request({ ...options, agent: server.httpAgent });
+		outgoing = http.request({ ...options, agent: httpAgent });
 	} else {
 		throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
 	}

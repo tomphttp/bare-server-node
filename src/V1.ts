@@ -5,7 +5,7 @@ import { decodeProtocol } from './encodeProtocol';
 import { randomBytes } from 'crypto';
 import { promisify } from 'util';
 import { Duplex } from 'stream';
-import Server, { BareError, json } from './BareServer';
+import Server, { BareError, json, ServerConfig } from './BareServer';
 import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
@@ -133,12 +133,12 @@ function readHeaders(request: Request): BareHeaderData {
 }
 
 async function tunnelRequest(
-	server: Server,
+	serverConfig: ServerConfig,
 	request: Request
 ): Promise<Response> {
 	const { remote, headers } = readHeaders(request);
 
-	const response = await fetch(server, request, headers, remote);
+	const response = await fetch(serverConfig, request, headers, remote);
 
 	const responseHeaders = new Headers();
 
@@ -175,7 +175,10 @@ const tempMeta: Map<string, Meta> = new Map();
 
 const metaExpiration = 30e3;
 
-async function wsMeta(server: Server, request: Request): Promise<Response> {
+async function wsMeta(
+	serverConfig: ServerConfig,
+	request: Request
+): Promise<Response> {
 	if (request.method === 'OPTIONS') {
 		return new Response(undefined, { status: 200 });
 	}
@@ -221,7 +224,11 @@ async function wsNewMeta() {
 	return new Response(Buffer.from(id));
 }
 
-async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
+async function tunnelSocket(
+	serverConfig: ServerConfig,
+	request: Request,
+	socket: Duplex
+) {
 	if (!request.headers.has('sec-websocket-protocol')) {
 		socket.end();
 		return;
@@ -246,7 +253,7 @@ async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 	loadForwardedHeaders(forwardHeaders, headers, request);
 
 	const [remoteResponse, remoteSocket] = await upgradeFetch(
-		server,
+		serverConfig,
 		request,
 		headers,
 		remote
@@ -287,14 +294,14 @@ async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 	});
 
 	remoteSocket.on('error', error => {
-		if (server.logErrors) {
+		if (serverConfig.logErrors) {
 			console.error('Remote socket error:', error);
 		}
 		socket.end();
 	});
 
 	socket.on('error', error => {
-		if (server.logErrors) {
+		if (serverConfig.logErrors) {
 			console.error('Serving socket error:', error);
 		}
 		remoteSocket.end();

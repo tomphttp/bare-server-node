@@ -5,7 +5,7 @@ import { promisify } from 'util';
 import { Headers } from 'fetch-headers';
 
 import { Request, Response } from './AbstractMessage';
-import Server, { BareError } from './BareServer';
+import Server, { BareError, ServerConfig } from './BareServer';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil';
 import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil';
@@ -255,7 +255,7 @@ function readHeaders(request: Request): BareHeaderData {
 }
 
 async function tunnelRequest(
-	server: Server,
+	serverConfig: ServerConfig,
 	request: Request
 ): Promise<Response> {
 	const { remote, sendHeaders, passHeaders, passStatus, forwardHeaders } =
@@ -263,7 +263,7 @@ async function tunnelRequest(
 
 	loadForwardedHeaders(forwardHeaders, sendHeaders, request);
 
-	const response = await fetch(server, request, sendHeaders, remote);
+	const response = await fetch(serverConfig, request, sendHeaders, remote);
 
 	const responseHeaders = new Headers();
 
@@ -312,7 +312,10 @@ const tempMeta: Map<string, Meta> = new Map();
 
 const metaExpiration = 30e3;
 
-async function getMeta(server: Server, request: Request): Promise<Response> {
+async function getMeta(
+	serverConfig: ServerConfig,
+	request: Request
+): Promise<Response> {
 	if (request.method === 'OPTIONS') {
 		return new Response(undefined, { status: 200 });
 	}
@@ -359,7 +362,10 @@ async function getMeta(server: Server, request: Request): Promise<Response> {
 	});
 }
 
-async function newMeta(server: Server, request: Request): Promise<Response> {
+async function newMeta(
+	serverConfig: ServerConfig,
+	request: Request
+): Promise<Response> {
 	const { remote, sendHeaders, forwardHeaders } = readHeaders(request);
 
 	const id = (await randomBytesAsync(32)).toString('hex');
@@ -374,7 +380,11 @@ async function newMeta(server: Server, request: Request): Promise<Response> {
 	return new Response(Buffer.from(id));
 }
 
-async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
+async function tunnelSocket(
+	serverConfig: ServerConfig,
+	request: Request,
+	socket: Duplex
+) {
 	if (!request.headers.has('sec-websocket-protocol')) {
 		socket.end();
 		return;
@@ -392,7 +402,7 @@ async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 	loadForwardedHeaders(meta.forwardHeaders, meta.sendHeaders, request);
 
 	const [remoteResponse, remoteSocket] = await upgradeFetch(
-		server,
+		serverConfig,
 		request,
 		meta.sendHeaders,
 		meta.remote
@@ -440,7 +450,7 @@ async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 	});
 
 	remoteSocket.on('error', error => {
-		if (server.logErrors) {
+		if (serverConfig.logErrors) {
 			console.error('Remote socket error:', error);
 		}
 
@@ -448,7 +458,7 @@ async function tunnelSocket(server: Server, request: Request, socket: Duplex) {
 	});
 
 	socket.on('error', error => {
-		if (server.logErrors) {
+		if (serverConfig.logErrors) {
 			console.error('Serving socket error:', error);
 		}
 

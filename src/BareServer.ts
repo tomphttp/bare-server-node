@@ -1,7 +1,6 @@
 import { Request, Response, writeResponse } from './AbstractMessage';
 import { Duplex } from 'stream';
 import http from 'http';
-import https from 'https';
 import createHttpError from 'http-errors';
 import { BareHeaders } from './requestUtil';
 
@@ -81,56 +80,37 @@ export interface BareServerInit {
 	maintainer?: BareMaintainer;
 }
 
+export interface ServerConfig {
+	logErrors: boolean;
+	localAddress?: string;
+	maintainer?: BareMaintainer;
+}
+
 export default class BareServer {
 	directory: string;
-	logErrors: boolean;
 	routes: Map<
 		string,
-		(server: BareServer, request: Request) => Promise<Response>
+		(serverConfig: ServerConfig, request: Request) => Promise<Response>
 	>;
 	socketRoutes: Map<
 		string,
 		(
-			server: BareServer,
+			serverConfig: ServerConfig,
 			request: Request,
 			socket: import('stream').Duplex,
 			head: Buffer
 		) => void
 	>;
 	onClose: Set<() => void>;
-	httpAgent: http.Agent;
-	httpsAgent: https.Agent;
-	localAddress?: string;
-	maintainer?: BareMaintainer;
-	constructor(directory: string, init: BareServerInit = {}) {
-		if (init.logErrors) {
-			/**
-			 * @type {boolean}
-			 */
-			this.logErrors = true;
-		} else {
-			this.logErrors = false;
-		}
+	config: ServerConfig;
+	constructor(directory: string, init: Partial<ServerConfig> = {}) {
+		init.logErrors ||= false;
+
+		this.config = <ServerConfig>init;
 
 		this.routes = new Map();
 		this.socketRoutes = new Map();
 		this.onClose = new Set();
-
-		this.httpAgent = new http.Agent({
-			keepAlive: true,
-		});
-
-		this.httpsAgent = new https.Agent({
-			keepAlive: true,
-		});
-
-		if (init.localAddress) {
-			this.localAddress = init.localAddress;
-		}
-
-		if (init.maintainer) {
-			this.maintainer = init.maintainer;
-		}
 
 		if (typeof directory !== 'string') {
 			throw new Error('Directory must be specified.');
@@ -163,7 +143,7 @@ export default class BareServer {
 			language: 'NodeJS',
 			memoryUsage:
 				Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
-			maintainer: this.maintainer,
+			maintainer: this.config.maintainer,
 			project,
 		};
 	}
@@ -180,9 +160,9 @@ export default class BareServer {
 			const call = this.socketRoutes.get(service)!;
 
 			try {
-				await call(this, request, socket, head);
+				await call(this.config, request, socket, head);
 			} catch (error) {
-				if (this.logErrors) {
+				if (this.config.logErrors) {
 					console.error(error);
 				}
 
@@ -207,12 +187,12 @@ export default class BareServer {
 				response = new Response(undefined, { status: 200 });
 			} else if (this.routes.has(service)) {
 				const call = this.routes.get(service)!;
-				response = await call(this, request);
+				response = await call(this.config, request);
 			} else {
 				throw new createHttpError.NotFound();
 			}
 		} catch (error) {
-			if (this.logErrors) {
+			if (this.config.logErrors) {
 				console.error(error);
 			}
 
@@ -233,7 +213,7 @@ export default class BareServer {
 			}
 
 			if (!(response instanceof Response)) {
-				if (this.logErrors) {
+				if (this.config.logErrors) {
 					console.error(
 						'Cannot',
 						req.method,
