@@ -8,28 +8,22 @@ We provide a command-line interface for creating a server.
 
 For more features, specify the `--help` option when running the CLI.
 
-### Quickstart
+## Quickstart
 
-1. Clone the repository locally
+1. Install Bare Server Node globally
 
 ```sh
-git clone https://github.com/tomphttp/bare-server-node.git
+npm install --global bare-server-node
 ```
 
-2. Enter the folder
+2. Start the server
 
 ```sh
-cd bare-server-node
+npx bare-server-node
 ```
 
-3. Install dependencies
+Optionally start the server localhost:8080
 
 ```sh
-npm install
-```
-
-3. Start the server
-
-```sh
-node ./app.js server --port 80 --host localhost
+npx bare-server-node --port 8080 --host localhost
 ```
