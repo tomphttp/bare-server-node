@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import createServer from '../dist/BareServer.esm.js';
+import http from 'node:http';
+import createBareServer from '../dist/BareServer.esm.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
-import { Server as HTTPServer } from 'node:http';
 import { cpus } from 'node:os';
 
 process.env.UV_THREADPOOL_SIZE = cpus();
@@ -27,37 +27,37 @@ program
 		process.env.LOCAL_ADDRESS
 	)
 	.action(({ directory, errors, host, port, localAddress }) => {
-		const bare = createServer(directory, { errors, localAddress });
+		const bareServer = createBareServer(directory, { errors, localAddress });
 		console.info('Created Bare Server on directory:', directory);
 		console.info('Error logging is', errors ? 'enabled.' : 'disabled.');
 
-		const http = new HTTPServer();
+		const httpServer = http.createServer();
 		console.info('Created HTTP server.');
 
-		http.on('request', (req, res) => {
-			if (bare.shouldRoute(req)) {
-				bare.routeRequest(req, res);
+		httpServer.on('request', (req, res) => {
+			if (bareServer.shouldRoute(req)) {
+				bareServer.routeRequest(req, res);
 			} else {
 				res.writeHead(400);
 				res.send('Not found.');
 			}
 		});
 
-		http.on('upgrade', (req, socket, head) => {
-			if (bare.shouldRoute(req)) {
-				bare.routeUpgrade(req, socket, head);
+		httpServer.on('upgrade', (req, socket, head) => {
+			if (bareServer.shouldRoute(req)) {
+				bareServer.routeUpgrade(req, socket, head);
 			} else {
 				socket.end();
 			}
 		});
 
-		http.on('listening', () => {
+		httpServer.on('listening', () => {
 			console.log(
 				`HTTP server listening. View live at http://${host}:${port}${directory}`
 			);
 		});
 
-		http.listen({
+		httpServer.listen({
 			host: host,
 			port: port,
 		});
