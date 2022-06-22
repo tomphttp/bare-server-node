@@ -1,9 +1,7 @@
-import { Duplex } from 'stream';
-import { randomBytes } from 'crypto';
-import { promisify } from 'util';
-
 import { Headers } from 'fetch-headers';
-
+import { randomBytes } from 'node:crypto';
+import { Duplex } from 'node:stream';
+import { promisify } from 'node:util';
 import { Request, Response } from './AbstractMessage';
 import Server, { BareError, ServerConfig } from './BareServer';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil';

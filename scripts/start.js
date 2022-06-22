@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-
-import { Server as HTTPServer } from 'node:http';
-
+import createServer from '../dist/BareServer.esm.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
+import { Server as HTTPServer } from 'node:http';
+import { cpus } from 'node:os';
 
-import createServer from '../dist/BareServer.esm.js';
+process.env.UV_THREADPOOL_SIZE = cpus();
 
 config();
 

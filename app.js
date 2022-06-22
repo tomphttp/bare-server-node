@@ -1,4 +1,4 @@
-import { relative, dirname, join } from 'path';
+import { dirname, join, relative } from 'path';
 import { argv, cwd } from 'process';
 import { fileURLToPath } from 'url';
 

@@ -9,5 +9,6 @@
 				"parser": "babel-ts"
 			}
 		}
-	]
+	],
+	"plugins": ["prettier-plugin-organize-imports"]
 }

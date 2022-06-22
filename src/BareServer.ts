@@ -1,7 +1,7 @@
-import { Request, Response, writeResponse } from './AbstractMessage';
-import { Duplex } from 'stream';
-import http from 'http';
 import createHttpError from 'http-errors';
+import http from 'node:http';
+import { Duplex } from 'node:stream';
+import { Request, Response, writeResponse } from './AbstractMessage';
 import { BareHeaders } from './requestUtil';
 
 export interface BareErrorBody {

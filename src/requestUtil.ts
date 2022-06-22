@@ -1,8 +1,8 @@
-import http from 'http';
-import https from 'https';
+import http from 'node:http';
+import https from 'node:https';
+import { Duplex } from 'node:stream';
 import { Request } from './AbstractMessage';
 import { BareError, ServerConfig } from './BareServer';
-import { Duplex } from 'stream';
 
 const httpAgent = new http.Agent();
 const httpsAgent = new https.Agent();

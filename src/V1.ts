@@ -1,11 +1,11 @@
-import { Request, Response } from './AbstractMessage';
 import { Headers } from 'fetch-headers';
-import { mapHeadersFromArray, rawHeaderNames } from './headerUtil';
-import { decodeProtocol } from './encodeProtocol';
-import { randomBytes } from 'crypto';
-import { promisify } from 'util';
-import { Duplex } from 'stream';
+import { randomBytes } from 'node:crypto';
+import { Duplex } from 'node:stream';
+import { promisify } from 'node:util';
+import { Request, Response } from './AbstractMessage';
 import Server, { BareError, json, ServerConfig } from './BareServer';
+import { decodeProtocol } from './encodeProtocol';
+import { mapHeadersFromArray, rawHeaderNames } from './headerUtil';
 import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];

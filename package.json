@@ -58,20 +58,14 @@
 		"eslint": "^8.18.0",
 		"eslint-config-prettier": "^8.5.0",
 		"husky": "^7.0.4",
-		"import-sort-style-module": "^6.0.0",
 		"lint-staged": "^12.3.7",
 		"prettier": "^2.7.1",
-		"prettier-plugin-import-sort": "^0.0.7",
+		"prettier-plugin-organize-imports": "^3.0.0",
 		"resolve-typescript-plugin": "^1.2.0",
 		"rollup": "^2.75.7",
 		"rollup-plugin-typescript2": "^0.32.1"
 	},
 	"lint-staged": {
-		"*.{mjs, js, ts, json}": "prettier --write"
-	},
-	"importSort": {
-		".mjs, .js, .jsx, .ts, .tsx": {
-			"style": "module"
-		}
+		"*.{mjs, cjs, js, ts, json}": "prettier --write"
 	}
 }
