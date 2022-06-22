@@ -33,7 +33,7 @@ npx bare-server-node --port 8080 --host localhost
 
 ```js
 import { createServer as createHttpServer } from 'http';
-import createBareServer from '@tomphttp/bare-sever-node';
+import createBareServer from '@tomphttp/bare-server-node';
 
 const httpServer = createHttpServer();
 
