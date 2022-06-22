@@ -105,24 +105,24 @@ function readHeaders(request: Request): BareHeaderData {
 			const value = headers.get(header)!;
 
 			switch (remoteProp) {
-			case 'port':
-				if (isNaN(parseInt(value))) {
-					throw new BareError(400, {
-						code: 'INVALID_BARE_HEADER',
-						id: `request.headers.${header}`,
-						message: `Header was not a valid integer.`,
-					});
-				}
-				break;
-			case 'protocol':
-				if (!validProtocols.includes(value)) {
-					throw new BareError(400, {
-						code: 'INVALID_BARE_HEADER',
-						id: `request.headers.${header}`,
-						message: `Header was invalid`,
-					});
-				}
-				break;
+				case 'port':
+					if (isNaN(parseInt(value))) {
+						throw new BareError(400, {
+							code: 'INVALID_BARE_HEADER',
+							id: `request.headers.${header}`,
+							message: `Header was not a valid integer.`,
+						});
+					}
+					break;
+				case 'protocol':
+					if (!validProtocols.includes(value)) {
+						throw new BareError(400, {
+							code: 'INVALID_BARE_HEADER',
+							id: `request.headers.${header}`,
+							message: `Header was invalid`,
+						});
+					}
+					break;
 			}
 
 			remote[remoteProp] = value;
@@ -447,7 +447,7 @@ async function tunnelSocket(
 		remoteSocket.end();
 	});
 
-	remoteSocket.on('error', error => {
+	remoteSocket.on('error', (error) => {
 		if (serverConfig.logErrors) {
 			console.error('Remote socket error:', error);
 		}
@@ -455,7 +455,7 @@ async function tunnelSocket(
 		socket.end();
 	});
 
-	socket.on('error', error => {
+	socket.on('error', (error) => {
 		if (serverConfig.logErrors) {
 			console.error('Serving socket error:', error);
 		}

@@ -53,16 +53,19 @@
 		"@rollup/plugin-commonjs": "^22.0.0",
 		"@rollup/plugin-node-resolve": "^13.3.0",
 		"@types/http-errors": "^1.8.2",
+		"@types/node": "^18.0.0",
 		"@typescript-eslint/eslint-plugin": "^5.29.0",
 		"@typescript-eslint/parser": "^5.29.0",
 		"eslint": "^8.18.0",
 		"husky": "^7.0.4",
 		"lint-staged": "^12.3.7",
+		"prettier": "^2.7.1",
+		"prettier-plugin-organize-imports": "^3.0.0",
 		"resolve-typescript-plugin": "^1.2.0",
 		"rollup": "^2.75.7",
 		"rollup-plugin-typescript2": "^0.32.1"
 	},
 	"lint-staged": {
-		"*.{mjs, cjs, js, ts, json}": "eslint --fix"
+		"*.{mjs, cjs, js, ts, json}": "prettier --write"
 	}
 }

@@ -7,7 +7,7 @@
 		"strict": true,
 		"stripInternal": true,
 		"module": "ESNext",
-		"moduleResolution": "node",
+		"moduleResolution": "Node",
 		"allowSyntheticDefaultImports": true,
 		"declaration": true
 	},

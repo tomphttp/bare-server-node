@@ -28,7 +28,6 @@ Optionally start the server localhost:8080
 npx bare-server-node --port 8080 --host localhost
 ```
 
-
 ## Programically create a bare server
 
 ```js

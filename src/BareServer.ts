@@ -104,7 +104,7 @@ export default class BareServer {
 	onClose: Set<() => void>;
 	config: ServerConfig;
 	constructor(directory: string, init: Partial<ServerConfig> = {}) {
-		init.logErrors ||= false;
+		init.logErrors ??= false;
 
 		this.config = <ServerConfig>init;
 
@@ -121,10 +121,6 @@ export default class BareServer {
 		}
 
 		this.directory = directory;
-
-		this.routes.set('/', async () => {
-			return json(200, this.instanceInfo);
-		});
 	}
 	/**
 	 * Remove all timers and listeners
@@ -185,6 +181,8 @@ export default class BareServer {
 		try {
 			if (request.method === 'OPTIONS') {
 				response = new Response(undefined, { status: 200 });
+			} else if (service === '/') {
+				response = json(200, this.instanceInfo);
 			} else if (this.routes.has(service)) {
 				const call = this.routes.get(service)!;
 				response = await call(this.config, request);

@@ -1,9 +1,7 @@
 {
 	"root": true,
 	"parser": "@typescript-eslint/parser",
-	"plugins": [
-		"@typescript-eslint"
-	],
+	"plugins": ["@typescript-eslint"],
 	"env": {
 		"browser": true,
 		"node": true,
@@ -22,10 +20,8 @@
 		"global": true
 	},
 	"rules": {
-		"indent": [
-			"error",
-			"tab"
-		],
+		"indent": "off",
+		"quotes": "off",
 		"no-constant-condition": [
 			"error",
 			{
@@ -33,7 +29,6 @@
 			}
 		],
 		"no-lone-blocks": "off",
-		"quotes": "off",
 		"eqeqeq": "error",
 		"prefer-const": "error",
 		"no-var": "error",
