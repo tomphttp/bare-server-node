@@ -1,7 +1,9 @@
 {
 	"root": true,
 	"parser": "@typescript-eslint/parser",
-	"plugins": ["@typescript-eslint"],
+	"plugins": [
+		"@typescript-eslint"
+	],
 	"env": {
 		"browser": true,
 		"node": true,
@@ -10,8 +12,7 @@
 	"extends": [
 		"eslint:recommended",
 		"plugin:@typescript-eslint/eslint-recommended",
-		"plugin:@typescript-eslint/recommended",
-		"prettier"
+		"plugin:@typescript-eslint/recommended"
 	],
 	"parserOptions": {
 		"ecmaVersion": "latest",
@@ -21,7 +22,16 @@
 		"global": true
 	},
 	"rules": {
-		"no-constant-condition": ["error", { "checkLoops": false }],
+		"indent": [
+			"error",
+			"tab"
+		],
+		"no-constant-condition": [
+			"error",
+			{
+				"checkLoops": false
+			}
+		],
 		"no-lone-blocks": "off",
 		"quotes": "off",
 		"eqeqeq": "error",

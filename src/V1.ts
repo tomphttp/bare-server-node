@@ -41,24 +41,24 @@ function readHeaders(request: Request): BareHeaderData {
 			const value = request.headers.get(header)!;
 
 			switch (remoteProp) {
-				case 'port':
-					if (isNaN(parseInt(value))) {
-						throw new BareError(400, {
-							code: 'INVALID_BARE_HEADER',
-							id: `request.headers.${header}`,
-							message: `Header was not a valid integer.`,
-						});
-					}
-					break;
-				case 'protocol':
-					if (!validProtocols.includes(value)) {
-						throw new BareError(400, {
-							code: 'INVALID_BARE_HEADER',
-							id: `request.headers.${header}`,
-							message: `Header was invalid`,
-						});
-					}
-					break;
+			case 'port':
+				if (isNaN(parseInt(value))) {
+					throw new BareError(400, {
+						code: 'INVALID_BARE_HEADER',
+						id: `request.headers.${header}`,
+						message: `Header was not a valid integer.`,
+					});
+				}
+				break;
+			case 'protocol':
+				if (!validProtocols.includes(value)) {
+					throw new BareError(400, {
+						code: 'INVALID_BARE_HEADER',
+						id: `request.headers.${header}`,
+						message: `Header was invalid`,
+					});
+				}
+				break;
 			}
 
 			remote[remoteProp] = value;

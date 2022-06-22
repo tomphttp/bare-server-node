@@ -26,7 +26,7 @@ const project = {
 	repository: 'https://github.com/tomphttp/bare-server-node',
 };
 
-export function json(status: number, json: any) {
+export function json<T>(status: number, json: T) {
 	const send = Buffer.from(JSON.stringify(json, null, '\t'));
 
 	return new Response(send, {
