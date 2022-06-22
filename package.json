@@ -39,7 +39,7 @@
 		"start": "node scripts/start.js",
 		"build": "rollup -c",
 		"build:watch": "rollup -cw",
-		"prepare": "node ./scripts/prepare.js"
+		"prepare": "node scripts/prepare.js"
 	},
 	"dependencies": {
 		"commander": "^9.0.0",
