@@ -1,6 +1,6 @@
 # TOMP Bare Server
 
-This repository implements the TompHTTP bare server. See the specification [here](https://github.com/tomphttp/specifications/blob/master/BareServerV1.md).
+This repository implements the TompHTTP bare server. See the specification [here](https://github.com/tomphttp/specifications/blob/master/BareServer.md).
 
 ## Usage
 
