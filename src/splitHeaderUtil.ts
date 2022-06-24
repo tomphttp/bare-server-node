@@ -1,5 +1,5 @@
-import { Headers } from 'fetch-headers';
 import { BareError } from './BareServer';
+import { Headers } from 'fetch-headers';
 
 const MAX_HEADER_VALUE = 3072;
 

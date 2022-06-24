@@ -1,6 +1,5 @@
 {
-	"semi": true,
+	"useTabs": true,
 	"singleQuote": true,
-	"printWidth": 80,
-	"useTabs": true
+	"importOrderParserPlugins": ["typescript"]
 }

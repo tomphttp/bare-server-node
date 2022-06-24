@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import http from 'node:http';
 import createBareServer from '../dist/BareServer.esm.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
+import http from 'node:http';
 import { cpus } from 'node:os';
 
 process.env.UV_THREADPOOL_SIZE = cpus();

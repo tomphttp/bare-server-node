@@ -1,7 +1,7 @@
+import { BareHeaders } from './requestUtil';
 import { Headers } from 'fetch-headers';
 import http from 'node:http';
 import Stream from 'node:stream';
-import { BareHeaders } from './requestUtil';
 
 export interface RequestInit {
 	method: string;

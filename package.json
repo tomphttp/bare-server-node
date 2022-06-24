@@ -48,6 +48,7 @@
 		"http-errors": "^2.0.0"
 	},
 	"devDependencies": {
+		"@ianvs/prettier-plugin-sort-imports": "^3.4.2",
 		"@rollup/plugin-babel": "^5.3.1",
 		"@rollup/plugin-commonjs": "^22.0.0",
 		"@rollup/plugin-node-resolve": "^13.3.0",
@@ -59,7 +60,6 @@
 		"husky": "^7.0.4",
 		"lint-staged": "^12.3.7",
 		"prettier": "^2.7.1",
-		"prettier-plugin-organize-imports": "^3.0.0",
 		"resolve-typescript-plugin": "^1.2.0",
 		"rollup": "^2.75.7",
 		"rollup-plugin-typescript2": "^0.32.1"
