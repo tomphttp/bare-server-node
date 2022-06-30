@@ -1,7 +1,7 @@
 {
 	"name": "@tomphttp/bare-server-node",
 	"description": "The Bare Server implementation in NodeJS.",
-	"version": "1.0.2-beta-readme2",
+	"version": "1.0.2-beta-typings3",
 	"homepage": "https://github.com/tomphttp",
 	"bugs": {
 		"url": "https://github.com/tomphttp/bare-server-node/issues",
@@ -29,7 +29,7 @@
 	},
 	"main": "dist/BareServer.umd.cjs",
 	"module": "dist/BareServer.esm.js",
-	"types": "dist/BareServer.d.ts",
+	"types": "dist/createServer.d.ts",
 	"files": [
 		"dist",
 		"scripts"
