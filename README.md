@@ -31,8 +31,8 @@ npx bare-server-node --port 8080 --host localhost
 ## Programically create a bare server
 
 ```js
+import createBareServer from '@tomphttp/bare-server-node';
 import { createServer as createHttpServer } from 'http';
-import createBareServer from '@tomphttp/bare-sever-node';
 
 const httpServer = createHttpServer();
 
@@ -44,11 +44,6 @@ const bareServer = createBareServer('/', {
 		website: 'https://github.com/tomphttp/',
 	},
 });
-
-bareServer.on('request', (req, res) => {
-	if(server.)
-});
-
 
 httpServer.on('request', (req, res) => {
 	if (bareServer.shouldRoute(req)) {
