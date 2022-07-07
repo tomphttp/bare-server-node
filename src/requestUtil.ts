@@ -51,23 +51,6 @@ function outgoingError<T>(error: T): T | BareError {
 	return error;
 }
 
-/**
- * @typedef {object} BareRemote
- * @property {string} host
- * @property {number|string} port
- * @property {string} path
- * @property {string} protocol
- */
-
-/**
- * @typedef {object} BareErrorBody
- * @property {string} code
- * @property {string} id
- * @property {string} [message]
- * @property {string} [stack]
- *
- */
-
 export async function fetch(
 	config: ServerConfig,
 	request: Request,

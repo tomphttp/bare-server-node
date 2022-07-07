@@ -47,9 +47,6 @@ export class Response {
 		}
 
 		if (typeof init.status === 'number') {
-			/**
-			 * @type {number}
-			 */
 			this.status = init.status;
 		} else {
 			this.status = 200;
