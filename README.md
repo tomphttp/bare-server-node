@@ -70,3 +70,7 @@ httpServer.listen({
 	port: 8080,
 });
 ```
+
+## Development
+
+See the [wiki](https://github.com/tomphttp/bare-server-node/wiki).
