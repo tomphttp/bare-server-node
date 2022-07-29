@@ -37,6 +37,7 @@ program
 			maintainer:
 				typeof maintainer === 'string' ? JSON.parse(maintainer) : undefined,
 		});
+
 		console.info('Created Bare Server on directory:', directory);
 		console.info('Error logging is', errors ? 'enabled.' : 'disabled.');
 
