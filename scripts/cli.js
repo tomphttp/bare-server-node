@@ -31,7 +31,6 @@ program
 		'Bare Server maintainer field'
 	)
 	.action(({ directory, errors, host, port, localAddress, maintainer }) => {
-		console.log(maintainer);
 		const bareServer = createBareServer(directory, {
 			errors,
 			localAddress,
