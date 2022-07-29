@@ -26,12 +26,17 @@ program
 		'Address/network interface',
 		process.env.LOCAL_ADDRESS
 	)
-	.option('-m, --maintainer', 'JSON maintainer')
+	.option(
+		'-m, --maintainer <{email?:string,website?:string}>',
+		'Bare Server maintainer field'
+	)
 	.action(({ directory, errors, host, port, localAddress, maintainer }) => {
+		console.log(maintainer);
 		const bareServer = createBareServer(directory, {
 			errors,
 			localAddress,
-			maintainer,
+			maintainer:
+				typeof maintainer === 'string' ? JSON.parse(maintainer) : undefined,
 		});
 		console.info('Created Bare Server on directory:', directory);
 		console.info('Error logging is', errors ? 'enabled.' : 'disabled.');
