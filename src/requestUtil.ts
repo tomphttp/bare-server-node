@@ -1,5 +1,5 @@
-import { Request } from './AbstractMessage';
-import { BareError, ServerConfig } from './BareServer';
+import { Request } from './AbstractMessage.js';
+import { BareError, ServerConfig } from './Server.js';
 import http from 'node:http';
 import https from 'node:https';
 import { Duplex } from 'node:stream';

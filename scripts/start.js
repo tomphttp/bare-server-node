@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import createBareServer from '../dist/BareServer.esm.js';
+import createBareServer from '../dist/createServer.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
 import http from 'node:http';

@@ -1,5 +1,5 @@
-import { Request, Response, writeResponse } from './AbstractMessage';
-import { BareHeaders } from './requestUtil';
+import { Request, Response, writeResponse } from './AbstractMessage.js';
+import { BareHeaders } from './requestUtil.js';
 import createHttpError from 'http-errors';
 import http from 'node:http';
 import { Duplex } from 'node:stream';
@@ -86,7 +86,7 @@ export interface ServerConfig {
 	maintainer?: BareMaintainer;
 }
 
-export default class BareServer {
+export default class Server {
 	directory: string;
 	routes: Map<
 		string,

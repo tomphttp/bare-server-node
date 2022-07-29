@@ -1,9 +1,9 @@
-import { Request, Response } from './AbstractMessage';
-import Server, { BareError, json, ServerConfig } from './BareServer';
-import { decodeProtocol } from './encodeProtocol';
-import { mapHeadersFromArray, rawHeaderNames } from './headerUtil';
-import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil';
-import { Headers } from 'fetch-headers';
+import { Request, Response } from './AbstractMessage.js';
+import Server, { BareError, json, ServerConfig } from './Server.js';
+import { decodeProtocol } from './encodeProtocol.js';
+import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
+import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil.js';
+import { Headers } from 'headers-polyfill';
 import { randomBytes } from 'node:crypto';
 import { Duplex } from 'node:stream';
 import { promisify } from 'node:util';
@@ -143,11 +143,16 @@ async function tunnelRequest(
 	const responseHeaders = new Headers();
 
 	for (const header in response.headers) {
-		if (header === 'content-encoding' || header === 'x-content-encoding') {
-			responseHeaders.set('content-encoding', response.headers[header]);
-		} else if (header === 'content-length') {
-			responseHeaders.set('content-length', response.headers[header]);
-		}
+		if (header === 'content-encoding' || header === 'x-content-encoding')
+			responseHeaders.set(
+				'content-encoding',
+				[response.headers[header]!].flat().join(', ')
+			);
+		else if (header === 'content-length')
+			responseHeaders.set(
+				'content-length',
+				[response.headers[header]!].flat().join(', ')
+			);
 	}
 
 	responseHeaders.set(
@@ -158,8 +163,9 @@ async function tunnelRequest(
 			})
 		)
 	);
-	responseHeaders.set('x-bare-status', response.statusCode);
-	responseHeaders.set('x-bare-status-text', response.statusMessage);
+
+	responseHeaders.set('x-bare-status', response.statusCode!.toString());
+	responseHeaders.set('x-bare-status-text', response.statusMessage!);
 
 	return new Response(response, { status: 200, headers: responseHeaders });
 }

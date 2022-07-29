@@ -1,8 +1,8 @@
-import BareServer, { ServerConfig } from './BareServer';
-import registerV1 from './V1';
-import registerV2 from './V2';
+import BareServer, { ServerConfig } from './Server.js';
+import registerV1 from './V1.js';
+import registerV2 from './V2.js';
 
-export default function createServer(
+export default function createBareServer(
 	directory: string,
 	init: Partial<ServerConfig> = {}
 ) {

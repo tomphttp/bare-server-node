@@ -1,5 +1,5 @@
-import { BareHeaders } from './requestUtil';
-import { Headers } from 'fetch-headers';
+import { BareHeaders } from './requestUtil.js';
+import { Headers } from 'headers-polyfill';
 import http from 'node:http';
 import Stream from 'node:stream';
 

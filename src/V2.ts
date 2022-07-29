@@ -1,9 +1,9 @@
-import { Request, Response } from './AbstractMessage';
-import Server, { BareError, ServerConfig } from './BareServer';
-import { mapHeadersFromArray, rawHeaderNames } from './headerUtil';
-import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil';
-import { joinHeaders, splitHeaders } from './splitHeaderUtil';
-import { Headers } from 'fetch-headers';
+import { Request, Response } from './AbstractMessage.js';
+import Server, { BareError, ServerConfig } from './Server.js';
+import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
+import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil.js';
+import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
+import { Headers } from 'headers-polyfill';
 import { randomBytes } from 'node:crypto';
 import { Duplex } from 'node:stream';
 import { promisify } from 'node:util';
@@ -266,22 +266,17 @@ async function tunnelRequest(
 	const responseHeaders = new Headers();
 
 	for (const header of passHeaders) {
-		if (header in response.headers) {
-			responseHeaders.set(header, response.headers[header]);
-		}
+		if (!(header in response.headers)) continue;
+		responseHeaders.set(header, [response.headers[header]!].flat().join(', '));
 	}
 
-	let status: number;
-
-	if (passStatus.includes(response.statusCode!)) {
-		status = response.statusCode!;
-	} else {
-		status = 200;
-	}
+	const status = passStatus.includes(response.statusCode!)
+		? response.statusCode!
+		: 200;
 
 	if (!defaultCachePassStatus.includes(status)) {
-		responseHeaders.set('x-bare-status', response.statusCode);
-		responseHeaders.set('x-bare-status-text', response.statusMessage);
+		responseHeaders.set('x-bare-status', response.statusCode!.toString());
+		responseHeaders.set('x-bare-status-text', response.statusMessage!);
 		responseHeaders.set(
 			'x-bare-headers',
 			JSON.stringify(
@@ -350,7 +345,7 @@ async function getMeta(
 
 	const responseHeaders = new Headers();
 
-	responseHeaders.set('x-bare-status', meta.response.status);
+	responseHeaders.set('x-bare-status', meta.response.status.toString());
 	responseHeaders.set('x-bare-status-text', meta.response.statusText);
 	responseHeaders.set('x-bare-headers', JSON.stringify(meta.response.headers));
 
@@ -406,7 +401,7 @@ async function tunnelSocket(
 		meta.remote
 	);
 
-	const remoteHeaders = new Headers(remoteResponse.headers);
+	const remoteHeaders = new Headers(<HeadersInit>remoteResponse.headers);
 
 	meta.response = {
 		headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {

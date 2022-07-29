@@ -1,14 +1,13 @@
 {
 	"compilerOptions": {
-		"outDir": "build",
-		"sourceMap": true,
+		"outDir": "dist",
 		"target": "ES2022",
 		"lib": ["ES2022"],
 		"strict": true,
 		"stripInternal": true,
-		"module": "ESNext",
-		"moduleResolution": "Node",
-		"allowSyntheticDefaultImports": true,
+		"module": "Node16",
+		"moduleResolution": "Node16",
+		"esModuleInterop": true,
 		"declaration": true
 	},
 	"include": ["src"]

@@ -23,46 +23,41 @@
 	],
 	"license": "GPL-3.0",
 	"type": "module",
-	"exports": {
-		"import": "./dist/BareServer.esm.js",
-		"require": "./dist/BareServer.umd.cjs"
-	},
-	"main": "dist/BareServer.umd.cjs",
-	"module": "dist/BareServer.esm.js",
+	"main": "dist/createServer.js",
 	"types": "dist/createServer.d.ts",
 	"files": [
 		"dist",
 		"scripts"
 	],
+	"engines": {
+		"node": ">=16.0.0"
+	},
 	"bin": "scripts/start.js",
 	"scripts": {
-		"start": "node scripts/start.js",
-		"build": "rollup -c",
-		"build:watch": "rollup -cw",
-		"prepare": "node scripts/prepare.js"
+		"build": "tsc",
+		"build:watch": "tsc --watch",
+		"prepare": "node scripts/prepare.js",
+		"start": "node scripts/start.js"
 	},
 	"dependencies": {
 		"commander": "^9.0.0",
 		"dotenv": "^16.0.1",
-		"fetch-headers": "^3.0.1",
+		"headers-polyfill": "^3.0.10",
 		"http-errors": "^2.0.0"
 	},
 	"devDependencies": {
 		"@ianvs/prettier-plugin-sort-imports": "^3.4.2",
-		"@rollup/plugin-babel": "^5.3.1",
-		"@rollup/plugin-commonjs": "^22.0.0",
-		"@rollup/plugin-node-resolve": "^13.3.0",
+		"@types/fetch-headers": "^2.0.0",
 		"@types/http-errors": "^1.8.2",
 		"@types/node": "^18.0.0",
 		"@typescript-eslint/eslint-plugin": "^5.29.0",
 		"@typescript-eslint/parser": "^5.29.0",
 		"eslint": "^8.18.0",
-		"husky": "^7.0.4",
-		"lint-staged": "^12.3.7",
+		"husky": "^8.0.1",
+		"lint-staged": "^13.0.3",
 		"prettier": "^2.7.1",
 		"resolve-typescript-plugin": "^1.2.0",
-		"rollup": "^2.75.7",
-		"rollup-plugin-typescript2": "^0.32.1"
+		"typescript": "^4.7.4"
 	},
 	"lint-staged": {
 		"*.{mjs, cjs, js, ts, json}": "prettier --write"
