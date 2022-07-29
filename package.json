@@ -1,7 +1,7 @@
 {
 	"name": "@tomphttp/bare-server-node",
 	"description": "The Bare Server implementation in NodeJS.",
-	"version": "1.2.0",
+	"version": "1.1.0",
 	"homepage": "https://github.com/tomphttp",
 	"bugs": {
 		"url": "https://github.com/tomphttp/bare-server-node/issues",
@@ -32,7 +32,7 @@
 	"engines": {
 		"node": ">=16.0.0"
 	},
-	"bin": "scripts/start.js",
+	"bin": "scripts/cli.js",
 	"scripts": {
 		"build": "tsc",
 		"build:watch": "tsc --watch",
