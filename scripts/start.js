@@ -13,21 +13,26 @@ const program = new Command();
 
 program
 	.alias('server')
-	.option('--d, --directory <directory>', 'Bare directory', '/')
+	.option('-d, --directory <directory>', 'Bare directory', '/')
 	.option(
-		'--h, --host <host>',
+		'-h, --host <host>',
 		'Listening host',
 		process.env.HOST || 'localhost'
 	)
-	.option('--p, --port <port>', 'Listening port', process.env.PORT || 80)
-	.option('--e, --errors', 'Error logging', 'ERRORS' in process.env)
+	.option('-p, --port <port>', 'Listening port', process.env.PORT || 80)
+	.option('-e, --errors', 'Error logging', 'ERRORS' in process.env)
 	.option(
-		'--la, --local-address <address>',
+		'-la, --local-address <address>',
 		'Address/network interface',
 		process.env.LOCAL_ADDRESS
 	)
-	.action(({ directory, errors, host, port, localAddress }) => {
-		const bareServer = createBareServer(directory, { errors, localAddress });
+	.option('-m, --maintainer', 'JSON maintainer')
+	.action(({ directory, errors, host, port, localAddress, maintainer }) => {
+		const bareServer = createBareServer(directory, {
+			errors,
+			localAddress,
+			maintainer,
+		});
 		console.info('Created Bare Server on directory:', directory);
 		console.info('Error logging is', errors ? 'enabled.' : 'disabled.');
 

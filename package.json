@@ -36,8 +36,7 @@
 	"scripts": {
 		"build": "tsc",
 		"build:watch": "tsc --watch",
-		"prepare": "node scripts/prepare.js",
-		"start": "node scripts/start.js"
+		"prepare": "node scripts/prepare.js"
 	},
 	"dependencies": {
 		"commander": "^9.0.0",
