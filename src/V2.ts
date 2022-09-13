@@ -27,7 +27,7 @@ const forbiddenPassHeaders: string[] = [
 	'access-control-allow-methods',
 	'access-control-expose-headers',
 	'access-control-max-age',
-	'access-cntrol-request-headers',
+	'access-control-request-headers',
 	'access-control-request-method',
 ];
 
