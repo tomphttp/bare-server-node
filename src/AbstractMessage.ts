@@ -73,8 +73,7 @@ export function writeResponse(
 	if (response.body instanceof Stream) {
 		response.body.pipe(res);
 	} else if (response.body instanceof Buffer) {
-		res.write(response.body);
-		res.end();
+		res.end(response.body);
 	} else {
 		res.end();
 	}
