@@ -3,9 +3,7 @@ const validChars =
 const reserveChar = '%';
 
 export function validProtocol(protocol: string): boolean {
-	for (let i = 0; i < protocol.length; i++) {
-		const char = protocol[i];
-
+	for (const char of protocol) {
 		if (!validChars.includes(char)) {
 			return false;
 		}
