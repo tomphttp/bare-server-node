@@ -42,4 +42,3 @@ httpServer.on('listening', () => {
 httpServer.listen({
 	port: 8080,
 });
-
