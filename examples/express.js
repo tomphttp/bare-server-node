@@ -1,6 +1,6 @@
 import createBareServer from '@tomphttp/bare-server-node';
-import http from 'http';
 import express from 'express';
+import http from 'http';
 
 const httpServer = http.createServer();
 
@@ -42,4 +42,3 @@ httpServer.on('listening', () => {
 httpServer.listen({
 	port: 8080,
 });
-
