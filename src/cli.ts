@@ -2,6 +2,7 @@ import createBareServer from './createServer.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
 import http from 'node:http';
+import { AddressInfo } from 'node:net';
 
 config();
 
@@ -69,8 +70,12 @@ program
 			});
 
 			httpServer.on('listening', () => {
+				const address = httpServer.address() as AddressInfo;
+
 				console.log(
-					`HTTP server listening. View live at http://${host}:${port}${directory}`
+					`HTTP server listening. View live at http://${
+						address.family === 'IPv6' ? `[${address.address}]` : address.address
+					}:${address.port}${directory}`
 				);
 			});
 
