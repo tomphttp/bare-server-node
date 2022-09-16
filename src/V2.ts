@@ -54,7 +54,8 @@ const defaultCacheForwardHeaders: string[] = [
 ];
 
 const defaultCachePassHeaders: string[] = ['cache-control', 'etag'];
-const defaultCachePassStatus: number[] = [304];
+
+const cacheNotModified = 304;
 
 const randomBytesAsync = promisify(randomBytes);
 
@@ -92,7 +93,7 @@ function readHeaders(request: Request): BareHeaderData {
 
 	if (cache) {
 		passHeaders.push(...defaultCachePassHeaders);
-		passStatus.push(...defaultCachePassStatus);
+		passStatus.push(cacheNotModified);
 		forwardHeaders.push(...defaultCacheForwardHeaders);
 	}
 
@@ -274,7 +275,7 @@ async function tunnelRequest(
 		? response.statusCode!
 		: 200;
 
-	if (!defaultCachePassStatus.includes(status)) {
+	if (status !== cacheNotModified) {
 		responseHeaders.set('x-bare-status', response.statusCode!.toString());
 		responseHeaders.set('x-bare-status-text', response.statusMessage!);
 		responseHeaders.set(
