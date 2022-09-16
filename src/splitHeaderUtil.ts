@@ -43,7 +43,7 @@ export function joinHeaders(headers: Headers): Headers {
 	const prefix = 'x-bare-headers';
 
 	if (headers.has(`${prefix}-0`)) {
-		const join = [];
+		const join: string[] = [];
 
 		for (const [header, value] of headers) {
 			if (!header.startsWith(prefix)) {
