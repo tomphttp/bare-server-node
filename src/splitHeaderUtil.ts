@@ -9,7 +9,7 @@ const MAX_HEADER_VALUE = 3072;
  * @param headers
  * @returns Split headers
  */
-export function splitHeaders(headers: Readonly<Headers>): Headers {
+export function splitHeaders(headers: Headers): Headers {
 	const output = new Headers(headers);
 
 	if (headers.has('x-bare-headers')) {
@@ -37,7 +37,7 @@ export function splitHeaders(headers: Readonly<Headers>): Headers {
  * @param headers
  * @returns Joined headers
  */
-export function joinHeaders(headers: Readonly<Headers>): Headers {
+export function joinHeaders(headers: Headers): Headers {
 	const output = new Headers(headers);
 
 	const prefix = 'x-bare-headers';
