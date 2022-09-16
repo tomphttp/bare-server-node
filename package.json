@@ -35,8 +35,7 @@
 	"bin": "bin.js",
 	"scripts": {
 		"build": "tsc",
-		"build:watch": "tsc --watch",
-		"prepare": "node scripts/prepare.js"
+		"build:watch": "tsc --watch"
 	},
 	"dependencies": {
 		"commander": "^9.0.0",
@@ -52,13 +51,8 @@
 		"@typescript-eslint/eslint-plugin": "^5.37.0",
 		"@typescript-eslint/parser": "^5.37.0",
 		"eslint": "^8.23.1",
-		"husky": "^8.0.1",
-		"lint-staged": "^13.0.3",
 		"prettier": "^2.7.1",
 		"resolve-typescript-plugin": "^1.2.0",
 		"typescript": "^4.8.3"
-	},
-	"lint-staged": {
-		"*.{mjs, cjs, js, ts, json}": "prettier --write"
 	}
 }
