@@ -2,9 +2,6 @@ import createBareServer from './createServer.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
 import http from 'node:http';
-import { cpus } from 'node:os';
-
-process.env.UV_THREADPOOL_SIZE = cpus().length.toString();
 
 config();
 
