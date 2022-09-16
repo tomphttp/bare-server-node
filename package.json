@@ -27,12 +27,12 @@
 	"types": "dist/createServer.d.ts",
 	"files": [
 		"dist",
-		"scripts"
+		"bin.js"
 	],
 	"engines": {
 		"node": ">=16.0.0"
 	},
-	"bin": "scripts/cli.js",
+	"bin": "bin.js",
 	"scripts": {
 		"build": "tsc",
 		"build:watch": "tsc --watch",

@@ -1,11 +1,10 @@
-#!/usr/bin/env node
-import createBareServer from '../dist/createServer.js';
+import createBareServer from './createServer.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
 import http from 'node:http';
 import { cpus } from 'node:os';
 
-process.env.UV_THREADPOOL_SIZE = cpus();
+process.env.UV_THREADPOOL_SIZE = cpus().length.toString();
 
 config();
 
@@ -14,12 +13,8 @@ const program = new Command();
 program
 	.alias('server')
 	.option('-d, --directory <directory>', 'Bare directory', '/')
-	.option(
-		'-h, --host <host>',
-		'Listening host',
-		process.env.HOST || 'localhost'
-	)
-	.option('-p, --port <port>', 'Listening port', process.env.PORT || 80)
+	.option('-h, --host <host>', 'Listening host', process.env.HOST)
+	.option('-p, --port <port>', 'Listening port', process.env.PORT || '80')
 	.option('-e, --errors', 'Error logging', 'ERRORS' in process.env)
 	.option(
 		'-la, --local-address <address>',
@@ -30,47 +25,63 @@ program
 		'-m, --maintainer <{email?:string,website?:string}>',
 		'Bare Server maintainer field'
 	)
-	.action(({ directory, errors, host, port, localAddress, maintainer }) => {
-		const bareServer = createBareServer(directory, {
+	.action(
+		({
+			directory,
 			errors,
+			host,
+			port,
 			localAddress,
-			maintainer:
-				typeof maintainer === 'string' ? JSON.parse(maintainer) : undefined,
-		});
+			maintainer,
+		}: {
+			directory: string;
+			errors: boolean;
+			host?: string;
+			port: string;
+			localAddress?: string;
+			maintainer?: string;
+		}) => {
+			const bareServer = createBareServer(directory, {
+				logErrors: errors,
+				localAddress,
+				maintainer:
+					typeof maintainer === 'string' ? JSON.parse(maintainer) : undefined,
+			});
 
-		console.info('Created Bare Server on directory:', directory);
-		console.info('Error logging is', errors ? 'enabled.' : 'disabled.');
+			console.info('Created Bare Server on directory:', directory);
+			console.info('Error logging is', errors ? 'enabled.' : 'disabled.');
 
-		const httpServer = http.createServer();
-		console.info('Created HTTP server.');
+			const httpServer = http.createServer();
+			console.info('Created HTTP server.');
 
-		httpServer.on('request', (req, res) => {
-			if (bareServer.shouldRoute(req)) {
-				bareServer.routeRequest(req, res);
-			} else {
-				res.writeHead(400);
-				res.send('Not found.');
-			}
-		});
+			httpServer.on('request', (req, res) => {
+				if (bareServer.shouldRoute(req)) {
+					bareServer.routeRequest(req, res);
+				} else {
+					res.writeHead(400);
+					res.end('Not found.');
+				}
+			});
 
-		httpServer.on('upgrade', (req, socket, head) => {
-			if (bareServer.shouldRoute(req)) {
-				bareServer.routeUpgrade(req, socket, head);
-			} else {
-				socket.end();
-			}
-		});
+			httpServer.on('upgrade', (req, socket, head) => {
+				if (bareServer.shouldRoute(req)) {
+					bareServer.routeUpgrade(req, socket, head);
+				} else {
+					socket.end();
+				}
+			});
 
-		httpServer.on('listening', () => {
-			console.log(
-				`HTTP server listening. View live at http://${host}:${port}${directory}`
-			);
-		});
+			httpServer.on('listening', () => {
+				console.log(
+					`HTTP server listening. View live at http://${host}:${port}${directory}`
+				);
+			});
 
-		httpServer.listen({
-			host: host,
-			port: port,
-		});
-	});
+			httpServer.listen({
+				host: host,
+				port: port,
+			});
+		}
+	);
 
 program.parse(process.argv);
