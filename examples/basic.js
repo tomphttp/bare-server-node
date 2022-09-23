@@ -17,7 +17,7 @@ httpServer.on('request', (req, res) => {
 		bareServer.routeRequest(req, res);
 	} else {
 		res.writeHead(400);
-		res.send('Not found.');
+		res.end('Not found.');
 	}
 });
 
