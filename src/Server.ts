@@ -1,8 +1,8 @@
 import { Request, Response, writeResponse } from './AbstractMessage.js';
 import { BareHeaders } from './requestUtil.js';
-import http from 'http';
 import createHttpError from 'http-errors';
-import { Duplex } from 'stream';
+import http from 'node:http';
+import { Duplex } from 'node:stream';
 
 export interface BareErrorBody {
 	code: string;

@@ -3,10 +3,10 @@ import Server, { BareError, ServerConfig } from './Server.js';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
 import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
-import { randomBytes } from 'crypto';
 import { Headers } from 'headers-polyfill';
-import { Duplex } from 'stream';
-import { promisify } from 'util';
+import { randomBytes } from 'node:crypto';
+import { Duplex } from 'node:stream';
+import { promisify } from 'node:util';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 
