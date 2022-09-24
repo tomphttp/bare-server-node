@@ -15,9 +15,7 @@ export interface BareRemote {
 	protocol: string;
 }
 
-export type BareHeaders = {
-	[key: string]: string[] | string;
-};
+export type BareHeaders = Record<string, string | string[]>;
 
 function outgoingError<T>(error: T): T | BareError {
 	if (error instanceof Error) {
