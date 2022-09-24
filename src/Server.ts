@@ -54,6 +54,7 @@ export type BareProject = {
 
 export type BareLanguage =
 	| 'NodeJS'
+	| 'ServiceWorker'
 	| 'Deno'
 	| 'Java'
 	| 'PHP'
@@ -64,7 +65,7 @@ export type BareLanguage =
 	| 'Ruby'
 	| 'Go'
 	| 'Crystal'
-	| 'Bash'
+	| 'Shell'
 	| string;
 
 export type BareManifest = {
