@@ -214,8 +214,8 @@ export default class Server {
 				if (this.config.logErrors) {
 					console.error(
 						'Cannot',
-						req.method,
-						req.url,
+						request.method,
+						request.url.pathname,
 						': Route did not return a response.'
 					);
 				}
