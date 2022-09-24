@@ -25,7 +25,7 @@ $ npx bare-server-node
 Optionally start the server localhost:8080:
 
 ```sh
-$npx bare-server-node --port 8080 --host localhost
+$ npx bare-server-node --port 8080 --host localhost
 ```
 
 ## Programically create a bare server
