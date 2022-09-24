@@ -1,10 +1,10 @@
-import type { Request} from './AbstractMessage.js';
+import type { Request } from './AbstractMessage.js';
 import { Response } from './AbstractMessage.js';
 import type { ServerConfig } from './Server.js';
 import type Server from './Server.js';
 import { BareError } from './Server.js';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
-import type { BareHeaders, BareRemote} from './requestUtil.js';
+import type { BareHeaders, BareRemote } from './requestUtil.js';
 import { fetch, upgradeFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
 import { Headers } from 'headers-polyfill';
