@@ -87,7 +87,7 @@ export interface ServerConfig {
 }
 
 export default class Server {
-	directory: string;
+	onClose: Set<() => void>;
 	routes: Map<
 		string,
 		(serverConfig: ServerConfig, request: Request) => Promise<Response>
@@ -101,8 +101,8 @@ export default class Server {
 			head: Buffer
 		) => void
 	>;
-	onClose: Set<() => void>;
-	config: ServerConfig;
+	private directory: string;
+	private config: ServerConfig;
 	constructor(directory: string, init: Partial<ServerConfig> = {}) {
 		init.logErrors ??= false;
 
