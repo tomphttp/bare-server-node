@@ -224,11 +224,7 @@ async function wsMeta(
 	});
 }
 
-/**
- *
- * @returns {Promise<Response>}
- */
-async function wsNewMeta() {
+async function wsNewMeta(): Promise<Response> {
 	const id = (await randomBytesAsync(32)).toString('hex');
 
 	tempMeta.set(id, {
