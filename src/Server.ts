@@ -2,7 +2,7 @@ import { Request, Response, writeResponse } from './AbstractMessage.js';
 import type { BareHeaders } from './requestUtil.js';
 import createHttpError from 'http-errors';
 import { EventEmitter } from 'node:events';
-import type http from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Duplex } from 'node:stream';
 
 export interface BareErrorBody {
@@ -129,7 +129,7 @@ export default class Server extends EventEmitter {
 	close() {
 		this.emit('close');
 	}
-	shouldRoute(request: http.IncomingMessage): boolean {
+	shouldRoute(request: IncomingMessage): boolean {
 		return request.url !== undefined && request.url.startsWith(this.directory);
 	}
 	get instanceInfo(): BareManifest {
@@ -142,7 +142,7 @@ export default class Server extends EventEmitter {
 			project,
 		};
 	}
-	async routeUpgrade(req: http.IncomingMessage, socket: Duplex, head: Buffer) {
+	async routeUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer) {
 		const request = new Request(req, {
 			method: req.method!,
 			path: req.url!,
@@ -167,7 +167,7 @@ export default class Server extends EventEmitter {
 			socket.end();
 		}
 	}
-	async routeRequest(req: http.IncomingMessage, res: http.ServerResponse) {
+	async routeRequest(req: IncomingMessage, res: ServerResponse) {
 		const request = new Request(req, {
 			method: req.method!,
 			path: req.url!,

@@ -1,12 +1,13 @@
 import type { Request } from './AbstractMessage.js';
 import type { ServerConfig } from './Server.js';
 import { BareError } from './Server.js';
-import http from 'node:http';
-import https from 'node:https';
+import type { ClientRequest, IncomingMessage } from 'node:http';
+import { Agent as HttpAgent, request as httpRequest } from 'node:http';
+import { Agent as HttpsAgent, request as httpsRequest } from 'node:https';
 import type { Duplex } from 'node:stream';
 
-const httpAgent = new http.Agent();
-const httpsAgent = new https.Agent();
+const httpAgent = new HttpAgent();
+const httpsAgent = new HttpsAgent();
 
 export interface BareRemote {
 	host: string;
@@ -55,7 +56,7 @@ export async function fetch(
 	request: Request,
 	requestHeaders: BareHeaders,
 	url: BareRemote
-): Promise<http.IncomingMessage> {
+): Promise<IncomingMessage> {
 	const options = {
 		host: url.host,
 		port: url.port,
@@ -66,12 +67,12 @@ export async function fetch(
 		localAddress: config.localAddress,
 	};
 
-	let outgoing: http.ClientRequest;
+	let outgoing: ClientRequest;
 
 	if (url.protocol === 'https:') {
-		outgoing = https.request({ ...options, agent: httpsAgent });
+		outgoing = httpsRequest({ ...options, agent: httpsAgent });
 	} else if (url.protocol === 'http:') {
-		outgoing = http.request({ ...options, agent: httpAgent });
+		outgoing = httpRequest({ ...options, agent: httpAgent });
 	} else {
 		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 	}
@@ -79,7 +80,7 @@ export async function fetch(
 	request.body.pipe(outgoing);
 
 	return await new Promise((resolve, reject) => {
-		outgoing.on('response', (response: http.IncomingMessage) => {
+		outgoing.on('response', (response: IncomingMessage) => {
 			resolve(response);
 		});
 
@@ -94,7 +95,7 @@ export async function upgradeFetch(
 	request: Request,
 	requestHeaders: BareHeaders,
 	remote: BareRemote
-): Promise<[http.IncomingMessage, Duplex, Buffer]> {
+): Promise<[IncomingMessage, Duplex, Buffer]> {
 	const options = {
 		host: remote.host,
 		port: remote.port,
@@ -105,12 +106,12 @@ export async function upgradeFetch(
 		localAddress: serverConfig.localAddress,
 	};
 
-	let outgoing: http.ClientRequest;
+	let outgoing: ClientRequest;
 
 	if (remote.protocol === 'wss:') {
-		outgoing = https.request({ ...options, agent: httpsAgent });
+		outgoing = httpsRequest({ ...options, agent: httpsAgent });
 	} else if (remote.protocol === 'ws:') {
-		outgoing = http.request({ ...options, agent: httpAgent });
+		outgoing = httpRequest({ ...options, agent: httpAgent });
 	} else {
 		throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
 	}
@@ -124,7 +125,7 @@ export async function upgradeFetch(
 
 		outgoing.on(
 			'upgrade',
-			(request: http.IncomingMessage, socket: Duplex, head: Buffer) => {
+			(request: IncomingMessage, socket: Duplex, head: Buffer) => {
 				resolve([request, socket, head]);
 			}
 		);
