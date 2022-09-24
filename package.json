@@ -1,7 +1,7 @@
 {
 	"name": "@tomphttp/bare-server-node",
 	"description": "The Bare Server implementation in NodeJS.",
-	"version": "1.0.4-deps1",
+	"version": "1.1.0",
 	"homepage": "https://github.com/tomphttp",
 	"bugs": {
 		"url": "https://github.com/tomphttp/bare-server-node/issues",
