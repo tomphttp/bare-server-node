@@ -1,6 +1,7 @@
 import { Request, Response, writeResponse } from './AbstractMessage.js';
 import type { BareHeaders } from './requestUtil.js';
 import createHttpError from 'http-errors';
+import { EventEmitter } from 'node:events';
 import type http from 'node:http';
 import type { Duplex } from 'node:stream';
 
@@ -86,8 +87,7 @@ export interface ServerConfig {
 	maintainer?: BareMaintainer;
 }
 
-export default class Server {
-	onClose: Set<() => void>;
+export default class Server extends EventEmitter {
 	routes: Map<
 		string,
 		(serverConfig: ServerConfig, request: Request) => Promise<Response>
@@ -104,13 +104,14 @@ export default class Server {
 	private directory: string;
 	private config: ServerConfig;
 	constructor(directory: string, init: Partial<ServerConfig> = {}) {
+		super();
+
 		init.logErrors ??= false;
 
 		this.config = <ServerConfig>init;
 
 		this.routes = new Map();
 		this.socketRoutes = new Map();
-		this.onClose = new Set();
 
 		if (typeof directory !== 'string') {
 			throw new Error('Directory must be specified.');
@@ -126,9 +127,7 @@ export default class Server {
 	 * Remove all timers and listeners
 	 */
 	close() {
-		for (const callback of this.onClose) {
-			callback();
-		}
+		this.emit('close');
 	}
 	shouldRoute(request: http.IncomingMessage): boolean {
 		return request.url !== undefined && request.url.startsWith(this.directory);

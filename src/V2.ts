@@ -487,7 +487,7 @@ export default function registerV2(server: Server) {
 		}
 	}, 1e3);
 
-	server.onClose.add(() => {
+	server.once('close', () => {
 		clearInterval(interval);
 	});
 }
