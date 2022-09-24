@@ -131,7 +131,7 @@ export default class Server {
 		}
 	}
 	shouldRoute(request: http.IncomingMessage): boolean {
-		return request.url?.startsWith(this.directory) || false;
+		return request.url !== undefined && request.url.startsWith(this.directory);
 	}
 	get instanceInfo(): BareManifest {
 		return {
