@@ -176,7 +176,7 @@ export default class Server {
 		});
 
 		const service = request.url.pathname.slice(this.directory.length - 1);
-		let response;
+		let response: Response;
 
 		try {
 			if (request.method === 'OPTIONS') {
