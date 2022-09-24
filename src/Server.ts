@@ -2,6 +2,7 @@ import { Request, Response, writeResponse } from './AbstractMessage.js';
 import type { BareHeaders } from './requestUtil.js';
 import createHttpError from 'http-errors';
 import { EventEmitter } from 'node:events';
+import { readFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Duplex } from 'node:stream';
 
@@ -22,9 +23,15 @@ export class BareError extends Error {
 	}
 }
 
-const project = {
-	name: 'TOMPHTTP NodeJS Bare Server',
+const pkg = JSON.parse(
+	await readFile(new URL('../package.json', import.meta.url), 'utf-8')
+);
+
+const project: BareProject = {
+	name: 'bare-server-node',
+	description: 'TOMPHTTP NodeJS Bare Server',
 	repository: 'https://github.com/tomphttp/bare-server-node',
+	version: pkg.version,
 };
 
 export function json<T>(status: number, json: T) {
@@ -50,6 +57,7 @@ export type BareProject = {
 	email?: string;
 	website?: string;
 	repository?: string;
+	version?: string;
 };
 
 export type BareLanguage =
