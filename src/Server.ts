@@ -1,8 +1,8 @@
 import { Request, Response, writeResponse } from './AbstractMessage.js';
-import { BareHeaders } from './requestUtil.js';
+import type { BareHeaders } from './requestUtil.js';
 import createHttpError from 'http-errors';
-import http from 'node:http';
-import { Duplex } from 'node:stream';
+import type http from 'node:http';
+import type { Duplex } from 'node:stream';
 
 export interface BareErrorBody {
 	code: string;
@@ -97,7 +97,7 @@ export default class Server {
 		(
 			serverConfig: ServerConfig,
 			request: Request,
-			socket: import('stream').Duplex,
+			socket: Duplex,
 			head: Buffer
 		) => void
 	>;

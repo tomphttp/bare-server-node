@@ -1,6 +1,6 @@
-import { BareHeaders } from './requestUtil.js';
+import type { BareHeaders } from './requestUtil.js';
 import { Headers } from 'headers-polyfill';
-import http from 'node:http';
+import type http from 'node:http';
 import Stream from 'node:stream';
 
 export interface RequestInit {

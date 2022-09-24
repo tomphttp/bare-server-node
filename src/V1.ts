@@ -1,11 +1,15 @@
-import { Request, Response } from './AbstractMessage.js';
-import Server, { BareError, json, ServerConfig } from './Server.js';
+import type { Request } from './AbstractMessage.js';
+import { Response } from './AbstractMessage.js';
+import type { ServerConfig } from './Server.js';
+import type Server from './Server.js';
+import { BareError, json } from './Server.js';
 import { decodeProtocol } from './encodeProtocol.js';
 import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
-import { BareHeaders, BareRemote, fetch, upgradeFetch } from './requestUtil.js';
+import type { BareHeaders, BareRemote } from './requestUtil.js';
+import { fetch, upgradeFetch } from './requestUtil.js';
 import { Headers } from 'headers-polyfill';
 import { randomBytes } from 'node:crypto';
-import { Duplex } from 'node:stream';
+import type { Duplex } from 'node:stream';
 import { promisify } from 'node:util';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];

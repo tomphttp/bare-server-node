@@ -2,7 +2,7 @@ import createBareServer from './createServer.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
 import http from 'node:http';
-import { AddressInfo } from 'node:net';
+import type { AddressInfo } from 'node:net';
 
 config();
 

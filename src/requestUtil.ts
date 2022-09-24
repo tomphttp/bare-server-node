@@ -1,8 +1,9 @@
-import { Request } from './AbstractMessage.js';
-import { BareError, ServerConfig } from './Server.js';
+import type { Request } from './AbstractMessage.js';
+import type { ServerConfig } from './Server.js';
+import { BareError } from './Server.js';
 import http from 'node:http';
 import https from 'node:https';
-import { Duplex } from 'node:stream';
+import type { Duplex } from 'node:stream';
 
 const httpAgent = new http.Agent();
 const httpsAgent = new https.Agent();
