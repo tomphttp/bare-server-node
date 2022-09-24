@@ -3,7 +3,11 @@ import { Response } from './AbstractMessage.js';
 import type { ServerConfig } from './Server.js';
 import type Server from './Server.js';
 import { BareError } from './Server.js';
-import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
+import {
+	flattenHeader,
+	mapHeadersFromArray,
+	rawHeaderNames,
+} from './headerUtil.js';
 import type { BareHeaders, BareRemote } from './requestUtil.js';
 import { fetch, upgradeFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
@@ -272,7 +276,7 @@ async function tunnelRequest(
 
 	for (const header of passHeaders) {
 		if (!(header in response.headers)) continue;
-		responseHeaders.set(header, [response.headers[header]!].flat().join(', '));
+		responseHeaders.set(header, flattenHeader(response.headers[header]!));
 	}
 
 	const status = passStatus.includes(response.statusCode!)

@@ -42,3 +42,10 @@ export function mapHeadersFromArray(from: string[], to: BareHeaders) {
 
 	return to;
 }
+
+/**
+ * Converts a header into an HTTP-ready comma joined header.
+ */
+export function flattenHeader(value: string | string[]) {
+	return Array.isArray(value) ? value.join(', ') : value;
+}

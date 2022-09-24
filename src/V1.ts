@@ -4,7 +4,11 @@ import type { ServerConfig } from './Server.js';
 import type Server from './Server.js';
 import { BareError, json } from './Server.js';
 import { decodeProtocol } from './encodeProtocol.js';
-import { mapHeadersFromArray, rawHeaderNames } from './headerUtil.js';
+import {
+	flattenHeader,
+	mapHeadersFromArray,
+	rawHeaderNames,
+} from './headerUtil.js';
 import type { BareHeaders, BareRemote } from './requestUtil.js';
 import { fetch, upgradeFetch } from './requestUtil.js';
 import { Headers } from 'headers-polyfill';
@@ -150,12 +154,12 @@ async function tunnelRequest(
 		if (header === 'content-encoding' || header === 'x-content-encoding')
 			responseHeaders.set(
 				'content-encoding',
-				[response.headers[header]!].flat().join(', ')
+				flattenHeader(response.headers[header]!)
 			);
 		else if (header === 'content-length')
 			responseHeaders.set(
 				'content-length',
-				[response.headers[header]!].flat().join(', ')
+				flattenHeader(response.headers[header]!)
 			);
 	}
 
