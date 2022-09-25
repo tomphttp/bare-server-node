@@ -1,6 +1,6 @@
 import type { Request } from './AbstractMessage.js';
-import type { ServerConfig } from './Server.js';
-import { BareError } from './Server.js';
+import { BareError } from './BareServer.js';
+import type { ServerConfig } from './BareServer.js';
 import type { ClientRequest, IncomingMessage } from 'node:http';
 import { Agent as HttpAgent, request as httpRequest } from 'node:http';
 import { Agent as HttpsAgent, request as httpsRequest } from 'node:https';

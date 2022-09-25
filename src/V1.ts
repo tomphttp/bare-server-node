@@ -1,8 +1,8 @@
 import type { Request } from './AbstractMessage.js';
 import { Response } from './AbstractMessage.js';
-import type { ServerConfig } from './Server.js';
-import type Server from './Server.js';
-import { BareError, json } from './Server.js';
+import type { ServerConfig } from './BareServer.js';
+import type Server from './BareServer.js';
+import { BareError, json } from './BareServer.js';
 import { decodeProtocol } from './encodeProtocol.js';
 import {
 	flattenHeader,

@@ -1,8 +1,8 @@
 import type { Request } from './AbstractMessage.js';
 import { Response } from './AbstractMessage.js';
-import type { ServerConfig } from './Server.js';
-import type Server from './Server.js';
-import { BareError } from './Server.js';
+import { BareError } from './BareServer.js';
+import type { ServerConfig } from './BareServer.js';
+import type Server from './BareServer.js';
 import {
 	flattenHeader,
 	mapHeadersFromArray,

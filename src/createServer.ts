@@ -1,5 +1,5 @@
-import type { ServerConfig } from './Server.js';
-import BareServer from './Server.js';
+import BareServer from './BareServer.js';
+import type { ServerConfig } from './BareServer.js';
 import registerV1 from './V1.js';
 import registerV2 from './V2.js';
 

@@ -1,4 +1,4 @@
-import { BareError } from './Server.js';
+import { BareError } from './BareServer.js';
 import { Headers } from 'headers-polyfill';
 
 const MAX_HEADER_VALUE = 3072;
