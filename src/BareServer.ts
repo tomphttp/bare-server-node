@@ -112,6 +112,9 @@ export default class Server extends EventEmitter {
 	>;
 	private directory: string;
 	private config: ServerConfig;
+	/**
+	 * @internal
+	 */
 	constructor(directory: string, init: Partial<ServerConfig> = {}) {
 		super();
 
