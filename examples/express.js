@@ -4,9 +4,9 @@ import http from 'http';
 
 const httpServer = http.createServer();
 
-const expressServer = express();
+const app = express();
 
-expressServer.get('/', (req, res) => {
+app.get('/', (req, res) => {
 	res.send('Hello, World!');
 });
 
@@ -23,7 +23,7 @@ httpServer.on('request', (req, res) => {
 	if (bareServer.shouldRoute(req)) {
 		bareServer.routeRequest(req, res);
 	} else {
-		expressServer(req, res);
+		app(req, res);
 	}
 });
 
