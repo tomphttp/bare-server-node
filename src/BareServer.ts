@@ -2,8 +2,9 @@ import { Request, Response, writeResponse } from './AbstractMessage.js';
 import type { BareHeaders } from './requestUtil.js';
 import createHttpError from 'http-errors';
 import { EventEmitter } from 'node:events';
-import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
 
 export interface BareErrorBody {
@@ -24,7 +25,7 @@ export class BareError extends Error {
 }
 
 const pkg = JSON.parse(
-	await readFile(new URL('../package.json', import.meta.url), 'utf-8')
+	readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')
 );
 
 const project: BareProject = {
