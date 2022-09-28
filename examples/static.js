@@ -3,9 +3,9 @@
  * This is a very common setup.
  */
 import createBareServer from '@tomphttp/bare-server-node';
-import http from 'http';
+import http from 'node:http';
+import { fileURLToPath } from 'node:url';
 import serveStatic from 'serve-static';
-import { fileURLToPath } from 'url';
 
 const httpServer = http.createServer();
 
