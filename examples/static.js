@@ -3,11 +3,11 @@
  * This is a very common setup.
  */
 import createBareServer from '@tomphttp/bare-server-node';
-import http from 'node:http';
+import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import serveStatic from 'serve-static';
 
-const httpServer = http.createServer();
+const httpServer = createServer();
 
 // Run the Bare server in the /bare/ namespace. This will prevent conflicts between the static files and the bare server.
 const bareServer = createBareServer('/bare/', {
