@@ -100,7 +100,10 @@ export interface ServerConfig {
 export default class Server extends EventEmitter {
 	routes: Map<
 		string,
-		(serverConfig: ServerConfig, request: Request) => Promise<Response>
+		(
+			serverConfig: ServerConfig,
+			request: Request
+		) => Promise<Response> | Response
 	>;
 	socketRoutes: Map<
 		string,
@@ -109,7 +112,7 @@ export default class Server extends EventEmitter {
 			request: Request,
 			socket: Duplex,
 			head: Buffer
-		) => void
+		) => Promise<void> | void
 	>;
 	private directory: string;
 	private config: ServerConfig;
