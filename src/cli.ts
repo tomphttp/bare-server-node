@@ -427,15 +427,15 @@ if (cluster.isWorker) {
 
 				for (let i = 0; i < numCPUs; i++) bareWorker(i);
 
-				console.log('Running on', numCPUs, 'threads');
-
-				console.table({
-					'Error Logging': errors,
-					URL: `http://${
-						host === '0.0.0.0' ? 'localhost' : host
-					}:${port}${directory}`,
-					Maintainer: data.config.maintainer,
-				});
+				console.log('Error Logging:', errors);
+				console.log(
+					'URL:          ',
+					`http://${host === '0.0.0.0' ? 'localhost' : host}${
+						port === 80 ? '' : `:${port}`
+					}${directory}`
+				);
+				console.log('Maintainer:   ', maintainer);
+				console.log('Threads:      ', numCPUs);
 			}
 		);
 
