@@ -105,6 +105,12 @@ interface BareHub extends Hub {
 	): void;
 }
 
+function sleep(ms: number) {
+	return new Promise<void>((resolve) => {
+		setTimeout(() => resolve(), ms);
+	});
+}
+
 function createWorker(env: unknown) {
 	const worker = cluster.fork(env);
 
@@ -312,36 +318,54 @@ if (cluster.isWorker) {
 
 				const bareWorker = async (i: number) => {
 					const badge = `[${i}]`;
+					let sleepDuration = 2400;
 
 					while (true) {
-						const worker = await createWorker({
-							BARE: JSON.stringify(data),
-						});
-
+						let interval: NodeJS.Timer | void;
 						let msgTimeout: NodeJS.Timeout | void;
 
-						const interval = setInterval(async () => {
-							msgTimeout = setTimeout(() => {
-								console.error(badge, 'Timed out');
-								worker.destroy();
-							}, 3e3);
+						try {
+							const worker = await createWorker({
+								BARE: JSON.stringify(data),
+							});
 
-							const res = await new Promise<string | void>((resolve, reject) =>
-								hub.requestWorker(worker, 'ping', undefined, (err, data) => {
-									if (err) reject(err);
-									else resolve(data);
-								})
-							);
+							sleepDuration = 2400;
 
-							if (res !== 'pong') throw new Error('Unknown');
-							clearTimeout(msgTimeout);
-						}, 5e3);
+							interval = setInterval(async () => {
+								msgTimeout = setTimeout(() => {
+									console.error(badge, 'Timed out');
+									worker.destroy();
+								}, 3e3);
 
-						await workerExit(worker);
-						clearInterval(interval);
+								const res = await new Promise<string | void>(
+									(resolve, reject) =>
+										hub.requestWorker(
+											worker,
+											'ping',
+											undefined,
+											(err, data) => {
+												if (err) reject(err);
+												else resolve(data);
+											}
+										)
+								);
+
+								if (res !== 'pong') throw new Error('Unknown');
+								clearTimeout(msgTimeout);
+							}, 5e3);
+
+							await workerExit(worker);
+						} catch (err) {
+							console.error(err);
+						}
+
+						if (interval) clearInterval(interval);
 						if (msgTimeout) clearTimeout(msgTimeout);
-
 						console.error(badge, 'Exited');
+
+						await sleep(sleepDuration);
+						sleepDuration += 300;
+						sleepDuration = Math.min(sleepDuration, 60000);
 					}
 				};
 
