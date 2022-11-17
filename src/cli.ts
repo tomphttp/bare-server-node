@@ -1,8 +1,7 @@
 import createBareServer from './createServer.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
-import http from 'node:http';
-import type { AddressInfo } from 'node:net';
+import { createServer } from 'node:http';
 
 config();
 
@@ -11,8 +10,17 @@ const program = new Command();
 program
 	.alias('server')
 	.option('-d, --directory <directory>', 'Bare directory', '/')
-	.option('-h, --host <host>', 'Listening host', process.env.HOST)
-	.option('-p, --port <port>', 'Listening port', process.env.PORT || '80')
+	.option('-h, --host <host>', 'Listening host', process.env.HOST || '0.0.0.0')
+	.option<number>(
+		'-p, --port <port>',
+		'Listening port',
+		(val: string) => {
+			const valN = Number(val);
+			if (isNaN(valN)) throw new Error('Bad port');
+			return valN;
+		},
+		process.env.PORT ? Number(process.env.PORT) : 80
+	)
 	.option('-e, --errors', 'Error logging', 'ERRORS' in process.env)
 	.option(
 		'-la, --local-address <address>',
@@ -34,25 +42,31 @@ program
 		}: {
 			directory: string;
 			errors: boolean;
-			host?: string;
-			port: string;
+			host: string;
+			port: number;
 			localAddress?: string;
 			maintainer?: string;
 		}) => {
-			const bareServer = createBareServer(directory, {
+			const config = {
 				logErrors: errors,
 				localAddress,
 				maintainer:
 					typeof maintainer === 'string' ? JSON.parse(maintainer) : undefined,
-			});
+			};
+			const bareServer = createBareServer(directory, config);
 
-			console.info('Created Bare Server on directory:', directory);
-			console.info('Error logging is', errors ? 'enabled.' : 'disabled.');
+			console.log('Error Logging:', errors);
+			console.log(
+				'URL:          ',
+				`http://${host === '0.0.0.0' ? 'localhost' : host}${
+					port === 80 ? '' : `:${port}`
+				}${directory}`
+			);
+			console.log('Maintainer:   ', config.maintainer);
 
-			const httpServer = http.createServer();
-			console.info('Created HTTP server.');
+			const server = createServer();
 
-			httpServer.on('request', (req, res) => {
+			server.on('request', (req, res) => {
 				if (bareServer.shouldRoute(req)) {
 					bareServer.routeRequest(req, res);
 				} else {
@@ -61,7 +75,7 @@ program
 				}
 			});
 
-			httpServer.on('upgrade', (req, socket, head) => {
+			server.on('upgrade', (req, socket, head) => {
 				if (bareServer.shouldRoute(req)) {
 					bareServer.routeUpgrade(req, socket, head);
 				} else {
@@ -69,17 +83,7 @@ program
 				}
 			});
 
-			httpServer.on('listening', () => {
-				const address = httpServer.address() as AddressInfo;
-
-				console.log(
-					`HTTP server listening. View live at http://${
-						address.family === 'IPv6' ? `[${address.address}]` : address.address
-					}:${address.port}${directory}`
-				);
-			});
-
-			httpServer.listen({
+			server.listen({
 				host: host,
 				port: port,
 			});
