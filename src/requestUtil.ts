@@ -6,8 +6,12 @@ import { Agent as HttpAgent, request as httpRequest } from 'node:http';
 import { Agent as HttpsAgent, request as httpsRequest } from 'node:https';
 import type { Duplex } from 'node:stream';
 
-const httpAgent = new HttpAgent();
-const httpsAgent = new HttpsAgent();
+const httpAgent = new HttpAgent({
+	keepAlive: true,
+});
+const httpsAgent = new HttpsAgent({
+	keepAlive: true,
+});
 
 export interface BareRemote {
 	host: string;
