@@ -3,6 +3,7 @@ import { Response } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
 import type { ServerConfig } from './BareServer.js';
 import type Server from './BareServer.js';
+import type { Database } from './Database.js';
 import {
 	flattenHeader,
 	mapHeadersFromArray,
@@ -310,11 +311,12 @@ interface Meta {
 	forwardHeaders: string[];
 }
 
-const tempMeta: Map<string, Meta> = new Map();
+const metaKey = 'bareV2_';
 
 const metaExpiration = 30e3;
 
 async function getMeta(
+	database: Database,
 	serverConfig: ServerConfig,
 	request: Request
 ): Promise<Response> {
@@ -332,7 +334,7 @@ async function getMeta(
 
 	const id = request.headers.get('x-bare-id')!;
 
-	if (!tempMeta.has(id)) {
+	if (!(await database.has(id))) {
 		throw new BareError(400, {
 			code: 'INVALID_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
@@ -340,7 +342,7 @@ async function getMeta(
 		});
 	}
 
-	const meta = tempMeta.get(id)!;
+	const meta = JSON.parse((await database.get(id)) || '') as Meta;
 
 	if (!meta.response) {
 		throw new BareError(400, {
@@ -350,7 +352,7 @@ async function getMeta(
 		});
 	}
 
-	tempMeta.delete(id);
+	await database.delete(id);
 
 	const responseHeaders = new Headers();
 
@@ -365,24 +367,29 @@ async function getMeta(
 }
 
 async function newMeta(
+	database: Database,
 	serverConfig: ServerConfig,
 	request: Request
 ): Promise<Response> {
 	const { remote, sendHeaders, forwardHeaders } = readHeaders(request);
 
-	const id = (await randomBytesAsync(32)).toString('hex');
+	const id = metaKey + (await randomBytesAsync(32)).toString('hex');
 
-	tempMeta.set(id, {
-		set: Date.now(),
-		remote,
-		sendHeaders,
-		forwardHeaders,
-	});
+	await database.set(
+		id,
+		JSON.stringify({
+			set: Date.now(),
+			remote,
+			sendHeaders,
+			forwardHeaders,
+		})
+	);
 
 	return new Response(Buffer.from(id));
 }
 
 async function tunnelSocket(
+	database: Database,
 	serverConfig: ServerConfig,
 	request: Request,
 	socket: Duplex
@@ -394,12 +401,12 @@ async function tunnelSocket(
 
 	const id = request.headers.get('sec-websocket-protocol')!;
 
-	if (!tempMeta.has(id)) {
+	if (!(await database.has(id))) {
 		socket.end();
 		return;
 	}
 
-	const meta = tempMeta.get(id)!;
+	const meta = JSON.parse((await database.get(id)) || '') as Meta;
 
 	loadForwardedHeaders(meta.forwardHeaders, meta.sendHeaders, request);
 
@@ -419,6 +426,8 @@ async function tunnelSocket(
 		status: remoteResponse.statusCode!,
 		statusText: remoteResponse.statusMessage!,
 	};
+
+	await database.set(id, JSON.stringify(meta));
 
 	const responseHeaders = [
 		`HTTP/1.1 101 Switching Protocols`,
@@ -471,19 +480,18 @@ async function tunnelSocket(
 	socket.pipe(remoteSocket);
 }
 
-export default function registerV2(server: Server) {
+export default function registerV2(server: Server, database: Database) {
 	server.routes.set('/v2/', tunnelRequest);
-	server.routes.set('/v2/ws-new-meta', newMeta);
-	server.routes.set('/v2/ws-meta', getMeta);
-	server.socketRoutes.set('/v2/', tunnelSocket);
+	server.routes.set('/v2/ws-new-meta', newMeta.bind(null, database));
+	server.routes.set('/v2/ws-meta', getMeta.bind(null, database));
+	server.socketRoutes.set('/v2/', tunnelSocket.bind(null, database));
 
-	const interval = setInterval(() => {
-		for (const [id, meta] of tempMeta) {
+	const interval = setInterval(async () => {
+		for (const id of await database.keys()) {
+			if (!id.startsWith(metaKey)) continue;
+			const meta = JSON.parse((await database.get(id)) || '') as Meta;
 			const expires = meta.set + metaExpiration;
-
-			if (expires < Date.now()) {
-				tempMeta.delete(id);
-			}
+			if (expires < Date.now()) await database.delete(id);
 		}
 	}, 1e3);
 

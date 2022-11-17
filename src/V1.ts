@@ -3,6 +3,7 @@ import { Response } from './AbstractMessage.js';
 import type { ServerConfig } from './BareServer.js';
 import type Server from './BareServer.js';
 import { BareError, json } from './BareServer.js';
+import type { Database } from './Database.js';
 import { decodeProtocol } from './encodeProtocol.js';
 import {
 	flattenHeader,
@@ -185,11 +186,11 @@ interface Meta {
 	set: number;
 }
 
-const tempMeta: Map<string, Meta> = new Map();
-
 const metaExpiration = 30e3;
+const metaKey = 'bareV1_';
 
 async function wsMeta(
+	database: Database,
 	serverConfig: ServerConfig,
 	request: Request
 ): Promise<Response> {
@@ -207,7 +208,7 @@ async function wsMeta(
 
 	const id = request.headers.get('x-bare-id')!;
 
-	if (!tempMeta.has(id)) {
+	if (!(await database.has(id))) {
 		throw new BareError(400, {
 			code: 'INVALID_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
@@ -215,26 +216,30 @@ async function wsMeta(
 		});
 	}
 
-	const meta = tempMeta.get(id)!;
+	const meta = JSON.parse((await database.get(id)) || '') as Meta;
 
-	tempMeta.delete(id);
+	await database.delete(id);
 
 	return json(200, {
 		headers: meta.response?.headers,
 	});
 }
 
-async function wsNewMeta(): Promise<Response> {
-	const id = (await randomBytesAsync(32)).toString('hex');
+async function wsNewMeta(database: Database): Promise<Response> {
+	const id = metaKey + (await randomBytesAsync(32)).toString('hex');
 
-	tempMeta.set(id, {
-		set: Date.now(),
-	});
+	await database.set(
+		id,
+		JSON.stringify({
+			set: Date.now(),
+		})
+	);
 
 	return new Response(Buffer.from(id));
 }
 
 async function tunnelSocket(
+	database: Database,
 	serverConfig: ServerConfig,
 	request: Request,
 	socket: Duplex
@@ -269,12 +274,14 @@ async function tunnelSocket(
 		remote
 	);
 
-	if (tempMeta.has(id)) {
-		tempMeta.get(id)!.response = {
+	if (await database.has(id)) {
+		const meta = JSON.parse((await database.get(id)) || '');
+		meta.response = {
 			headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
 				...(<BareHeaders>remoteResponse.headers),
 			}),
 		};
+		await database.set(id, JSON.stringify(meta));
 	}
 
 	const responseHeaders = [
@@ -321,19 +328,18 @@ async function tunnelSocket(
 	socket.pipe(remoteSocket);
 }
 
-export default function registerV1(server: Server) {
+export default function registerV1(server: Server, database: Database) {
 	server.routes.set('/v1/', tunnelRequest);
-	server.routes.set('/v1/ws-new-meta', wsNewMeta);
-	server.routes.set('/v1/ws-meta', wsMeta);
-	server.socketRoutes.set('/v1/', tunnelSocket);
+	server.routes.set('/v1/ws-new-meta', wsNewMeta.bind(null, database));
+	server.routes.set('/v1/ws-meta', wsMeta.bind(null, database));
+	server.socketRoutes.set('/v1/', tunnelSocket.bind(null, database));
 
-	const interval = setInterval(() => {
-		for (const [id, meta] of tempMeta) {
+	const interval = setInterval(async () => {
+		for (const id of await database.keys()) {
+			if (!id.startsWith(metaKey)) continue;
+			const meta = JSON.parse((await database.get(id)) || '') as Meta;
 			const expires = meta.set + metaExpiration;
-
-			if (expires < Date.now()) {
-				tempMeta.delete(id);
-			}
+			if (expires < Date.now()) await database.delete(id);
 		}
 	}, 1e3);
 

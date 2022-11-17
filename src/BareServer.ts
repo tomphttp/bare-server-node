@@ -119,10 +119,8 @@ export default class Server extends EventEmitter {
 	/**
 	 * @internal
 	 */
-	constructor(directory: string, init: Partial<ServerConfig> = {}) {
+	constructor(directory: string, init: ServerConfig) {
 		super();
-
-		init.logErrors ??= false;
 
 		this.config = <ServerConfig>init;
 
