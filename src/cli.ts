@@ -434,6 +434,7 @@ if (cluster.isWorker) {
 					URL: `http://${
 						host === '0.0.0.0' ? 'localhost' : host
 					}:${port}${directory}`,
+					Maintainer: data.config.maintainer,
 				});
 			}
 		);
