@@ -7,6 +7,7 @@ import { config } from 'dotenv';
 import type { Worker } from 'node:cluster';
 import cluster from 'node:cluster';
 import http from 'node:http';
+import type { ListenOptions } from 'node:net';
 import { cpus } from 'node:os';
 
 const hub = new Hub() as BareHub;
@@ -52,7 +53,13 @@ interface BareHub extends Hub {
 		worker: Worker,
 		type: 'ping',
 		data?: unknown,
-		callback?: (err: Error | null, reponse: 'pong') => void
+		callback?: (err: Error | null, response: 'pong') => void
+	): boolean;
+	requestWorker(
+		worker: Worker,
+		type: 'listen',
+		data?: unknown,
+		callback?: (err: Error | null) => void
 	): boolean;
 	on(eventName: string | symbol, listener: (...args: unknown[]) => void): this;
 	on(
@@ -101,6 +108,14 @@ interface BareHub extends Hub {
 			data: void,
 			sender: Worker,
 			callback: (err: Error | null, data?: string[]) => void
+		) => void
+	): void;
+	on(
+		event: 'listen',
+		callback: (
+			data: void,
+			sender: Worker,
+			callback: (err: Error | null) => void
 		) => void
 	): void;
 }
@@ -157,6 +172,30 @@ function workerExit(worker: Worker) {
 	});
 }
 
+function listenHTTP(server: http.Server, options: ListenOptions) {
+	return new Promise<void>((resolve, reject) => {
+		const cleanup = () => {
+			server.off('error', onError);
+			server.off('listening', onListening);
+		};
+
+		const onError = (err: Error) => {
+			cleanup();
+			reject(err);
+		};
+
+		const onListening = () => {
+			cleanup();
+			resolve();
+		};
+
+		server.on('error', onError);
+		server.on('listening', onListening);
+
+		server.listen(options);
+	});
+}
+
 interface ClusterData {
 	directory: string;
 	host?: string;
@@ -165,44 +204,48 @@ interface ClusterData {
 }
 
 if (cluster.isWorker) {
-	const data = JSON.parse(process.env.BARE!) as ClusterData;
-	const bareServer = createBareServer(data.directory, data.config, {
-		get: (key) =>
-			new Promise<string | void>((resolve, reject) =>
-				hub.requestMaster('getKey', { key }, (err, data) => {
-					if (err) reject(err);
-					else resolve(data);
-				})
-			),
-		has: (key) =>
-			new Promise<boolean>((resolve, reject) =>
-				hub.requestMaster('hasKey', { key }, (err, data) => {
-					if (err) reject(err);
-					else resolve(data);
-				})
-			),
-		set: (key, value) =>
-			new Promise<void>((resolve, reject) =>
-				hub.requestMaster('setKey', { key, value }, (err) => {
-					if (err) reject(err);
-					else resolve();
-				})
-			),
-		keys: () =>
-			new Promise<string[]>((resolve, reject) =>
-				hub.requestMaster('getKeys', undefined, (err, data) => {
-					if (err) reject(err);
-					else resolve(data);
-				})
-			),
-		delete: (key) =>
-			new Promise<boolean>((resolve, reject) =>
-				hub.requestMaster('deleteKey', { key }, (err, data) => {
-					if (err) reject(err);
-					else resolve(data);
-				})
-			),
-	});
+	const clusterData = JSON.parse(process.env.BARE!) as ClusterData;
+	const bareServer = createBareServer(
+		clusterData.directory,
+		clusterData.config,
+		{
+			get: (key) =>
+				new Promise<string | void>((resolve, reject) =>
+					hub.requestMaster('getKey', { key }, (err, data) => {
+						if (err) reject(err);
+						else resolve(data);
+					})
+				),
+			has: (key) =>
+				new Promise<boolean>((resolve, reject) =>
+					hub.requestMaster('hasKey', { key }, (err, data) => {
+						if (err) reject(err);
+						else resolve(data);
+					})
+				),
+			set: (key, value) =>
+				new Promise<void>((resolve, reject) =>
+					hub.requestMaster('setKey', { key, value }, (err) => {
+						if (err) reject(err);
+						else resolve();
+					})
+				),
+			keys: () =>
+				new Promise<string[]>((resolve, reject) =>
+					hub.requestMaster('getKeys', undefined, (err, data) => {
+						if (err) reject(err);
+						else resolve(data);
+					})
+				),
+			delete: (key) =>
+				new Promise<boolean>((resolve, reject) =>
+					hub.requestMaster('deleteKey', { key }, (err, data) => {
+						if (err) reject(err);
+						else resolve(data);
+					})
+				),
+		}
+	);
 
 	hub.on('ping', (data, sender, callback) => {
 		callback(null, 'pong');
@@ -227,10 +270,14 @@ if (cluster.isWorker) {
 		}
 	});
 
-	httpServer.listen({
-		host: data.host,
-		port: data.port,
-	});
+	hub.on('listen', (data, sender, callback) =>
+		listenHTTP(httpServer, {
+			host: clusterData.host,
+			port: clusterData.port,
+		})
+			.then(() => callback(null))
+			.catch((err) => callback(err))
+	);
 } else {
 	const database = new MemoryDatabase();
 
@@ -329,6 +376,13 @@ if (cluster.isWorker) {
 								BARE: JSON.stringify(data),
 							});
 
+							await new Promise<void>((resolve, reject) =>
+								hub.requestWorker(worker, 'listen', undefined, (err) => {
+									if (err) reject(err);
+									else resolve();
+								})
+							);
+
 							sleepDuration = 2400;
 
 							interval = setInterval(async () => {
@@ -355,13 +409,13 @@ if (cluster.isWorker) {
 							}, 5e3);
 
 							await workerExit(worker);
-						} catch (err) {
-							console.error(err);
-						}
 
-						if (interval) clearInterval(interval);
-						if (msgTimeout) clearTimeout(msgTimeout);
-						console.error(badge, 'Exited');
+							if (interval) clearInterval(interval);
+							if (msgTimeout) clearTimeout(msgTimeout);
+							console.error(badge, 'Exited');
+						} catch (err) {
+							console.error(badge, 'Error:', err);
+						}
 
 						await sleep(sleepDuration);
 						sleepDuration += 300;
