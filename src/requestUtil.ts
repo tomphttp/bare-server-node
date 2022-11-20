@@ -90,16 +90,9 @@ export async function fetch(
 		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 	}
 
-	const destroyOutgoing = () => {
+	res.on('close', () => {
 		outgoing.destroy();
-	};
-	const cleanup = () => {
-		request.body.socket.off('close', destroyOutgoing);
-		outgoing.off('close', cleanup);
-	};
-
-	request.body.socket.once('close', destroyOutgoing);
-	outgoing.once('close', cleanup);
+	});
 
 	request.body.pipe(outgoing);
 
