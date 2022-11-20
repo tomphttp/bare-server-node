@@ -1,16 +1,17 @@
 import type { Request } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
 import type { ServerConfig } from './BareServer.js';
-import type { ClientRequest, IncomingMessage } from 'node:http';
+import type { ClientRequest, IncomingMessage, ServerResponse } from 'node:http';
 import { Agent as HttpAgent, request as httpRequest } from 'node:http';
 import { Agent as HttpsAgent, request as httpsRequest } from 'node:https';
 import type { Duplex } from 'node:stream';
 
 const httpAgent = new HttpAgent({
-	keepAlive: true,
+	keepAlive: false,
 });
 const httpsAgent = new HttpsAgent({
-	keepAlive: true,
+	keepAlive: false,
+	keepAliveMsecs: 0,
 });
 
 export interface BareRemote {
@@ -58,6 +59,7 @@ function outgoingError<T>(error: T): T | BareError {
 export async function fetch(
 	config: ServerConfig,
 	request: Request,
+	res: ServerResponse<IncomingMessage>,
 	requestHeaders: BareHeaders,
 	url: BareRemote
 ): Promise<IncomingMessage> {
@@ -73,13 +75,23 @@ export async function fetch(
 
 	let outgoing: ClientRequest;
 
-	if (url.protocol === 'https:') {
-		outgoing = httpsRequest({ ...options, agent: httpsAgent });
-	} else if (url.protocol === 'http:') {
-		outgoing = httpRequest({ ...options, agent: httpAgent });
-	} else {
+	if (url.protocol === 'https:')
+		outgoing = httpsRequest({
+			...options,
+			agent: httpsAgent,
+		});
+	else if (url.protocol === 'http:')
+		outgoing = httpRequest({
+			...options,
+			agent: httpAgent,
+		});
+	else {
 		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 	}
+
+	if (res.closed) outgoing.destroy();
+
+	res.on('close', () => outgoing.destroy());
 
 	request.body.pipe(outgoing);
 

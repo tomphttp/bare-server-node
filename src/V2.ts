@@ -13,6 +13,7 @@ import { fetch, upgradeFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
 import { Headers } from 'headers-polyfill';
 import { randomBytes } from 'node:crypto';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { promisify } from 'node:util';
 
@@ -263,14 +264,15 @@ function readHeaders(request: Request): BareHeaderData {
 
 async function tunnelRequest(
 	serverConfig: ServerConfig,
-	request: Request
+	request: Request,
+	res: ServerResponse<IncomingMessage>
 ): Promise<Response> {
 	const { remote, sendHeaders, passHeaders, passStatus, forwardHeaders } =
 		readHeaders(request);
 
 	loadForwardedHeaders(forwardHeaders, sendHeaders, request);
 
-	const response = await fetch(serverConfig, request, sendHeaders, remote);
+	const response = await fetch(serverConfig, request, res, sendHeaders, remote);
 
 	const responseHeaders = new Headers();
 

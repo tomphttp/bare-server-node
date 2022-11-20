@@ -1,7 +1,7 @@
 import type { BareHeaders } from './requestUtil.js';
 import { Headers } from 'headers-polyfill';
-import type http from 'node:http';
-import Stream from 'node:stream';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { Stream } from 'node:stream';
 
 export interface RequestInit {
 	method: string;
@@ -13,11 +13,11 @@ export interface RequestInit {
  * Abstraction for the data read from IncomingMessage
  */
 export class Request {
-	body: Stream;
+	body: IncomingMessage;
 	method: string;
 	headers: Headers;
 	url: URL;
-	constructor(body: Stream, init: RequestInit) {
+	constructor(body: IncomingMessage, init: RequestInit) {
 		this.body = body;
 		this.method = init.method;
 		this.headers = new Headers(init.headers);
@@ -28,7 +28,7 @@ export class Request {
 	}
 }
 
-export type ResponseBody = Buffer | Stream;
+export type ResponseBody = Buffer | IncomingMessage;
 
 export interface ResponseInit {
 	headers?: Headers | BareHeaders;
@@ -62,21 +62,18 @@ export class Response {
 
 export function writeResponse(
 	response: Response,
-	res: http.ServerResponse
+	res: ServerResponse
 ): boolean {
-	for (const [header, value] of response.headers) {
-		res.setHeader(header, value);
-	}
+	for (const [header, value] of response.headers) res.setHeader(header, value);
 
 	res.writeHead(response.status, response.statusText);
 
 	if (response.body instanceof Stream) {
-		response.body.pipe(res);
-	} else if (response.body instanceof Buffer) {
-		res.end(response.body);
-	} else {
-		res.end();
-	}
+		const { body } = response;
+		res.on('close', () => body.destroy());
+		body.pipe(res);
+	} else if (response.body instanceof Buffer) res.end(response.body);
+	else res.end();
 
 	return true;
 }

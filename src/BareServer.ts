@@ -102,7 +102,8 @@ export default class Server extends EventEmitter {
 		string,
 		(
 			serverConfig: ServerConfig,
-			request: Request
+			request: Request,
+			response: ServerResponse<IncomingMessage>
 		) => Promise<Response> | Response
 	>;
 	socketRoutes: Map<
@@ -200,7 +201,7 @@ export default class Server extends EventEmitter {
 				response = json(200, this.instanceInfo);
 			} else if (this.routes.has(service)) {
 				const call = this.routes.get(service)!;
-				response = await call(this.config, request);
+				response = await call(this.config, request, res);
 			} else {
 				throw new createHttpError.NotFound();
 			}
