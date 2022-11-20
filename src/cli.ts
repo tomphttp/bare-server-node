@@ -1,3 +1,4 @@
+import './sourceMap.js';
 import createBareServer from './createServer.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';

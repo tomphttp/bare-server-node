@@ -8,7 +8,8 @@
 		"strict": true,
 		"stripInternal": true,
 		"esModuleInterop": true,
-		"declaration": true
+		"declaration": true,
+		"sourceMap": true
 	},
 	"include": ["src"]
 }

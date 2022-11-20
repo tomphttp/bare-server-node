@@ -41,12 +41,14 @@
 		"commander": "^9.0.0",
 		"dotenv": "^16.0.2",
 		"headers-polyfill": "3.0.9",
-		"http-errors": "^2.0.0"
+		"http-errors": "^2.0.0",
+		"source-map-support": "^0.5.21"
 	},
 	"devDependencies": {
 		"@ianvs/prettier-plugin-sort-imports": "^3.4.2",
 		"@types/http-errors": "^1.8.2",
 		"@types/node": "^18.7.20",
+		"@types/source-map-support": "^0.5.6",
 		"@typescript-eslint/eslint-plugin": "^5.38.0",
 		"@typescript-eslint/parser": "^5.38.0",
 		"eslint": "^8.24.0",
