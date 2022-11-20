@@ -8,11 +8,11 @@ import type { Duplex } from 'node:stream';
 
 const httpAgent = new HttpAgent({
 	keepAlive: true,
-	timeout: 5e3,
+	timeout: 12e3,
 });
 const httpsAgent = new HttpsAgent({
 	keepAlive: true,
-	timeout: 5e3,
+	timeout: 12e3,
 });
 
 export interface BareRemote {
