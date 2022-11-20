@@ -7,11 +7,10 @@ import { Agent as HttpsAgent, request as httpsRequest } from 'node:https';
 import type { Duplex } from 'node:stream';
 
 const httpAgent = new HttpAgent({
-	keepAlive: false,
+	keepAlive: true,
 });
 const httpsAgent = new HttpsAgent({
-	keepAlive: false,
-	keepAliveMsecs: 0,
+	keepAlive: true,
 });
 
 export interface BareRemote {
