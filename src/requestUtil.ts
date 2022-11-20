@@ -8,9 +8,11 @@ import type { Duplex } from 'node:stream';
 
 const httpAgent = new HttpAgent({
 	keepAlive: true,
+	timeout: 5e3,
 });
 const httpsAgent = new HttpsAgent({
 	keepAlive: true,
+	timeout: 5e3,
 });
 
 export interface BareRemote {
@@ -88,9 +90,16 @@ export async function fetch(
 		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 	}
 
-	if (res.closed) outgoing.destroy();
+	const destroyOutgoing = () => {
+		outgoing.destroy();
+	};
+	const cleanup = () => {
+		request.body.socket.off('close', destroyOutgoing);
+		outgoing.off('close', cleanup);
+	};
 
-	res.on('close', () => outgoing.destroy());
+	request.body.socket.once('close', destroyOutgoing);
+	outgoing.once('close', cleanup);
 
 	request.body.pipe(outgoing);
 
