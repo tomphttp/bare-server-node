@@ -99,6 +99,11 @@ export async function fetch(
 			resolve(response);
 		});
 
+		outgoing.on('upgrade', (req, socket) => {
+			reject('Remote did not send a response');
+			socket.destroy();
+		});
+
 		outgoing.on('error', (error: Error) => {
 			reject(outgoingError(error));
 		});
@@ -110,7 +115,7 @@ export async function upgradeFetch(
 	request: Request,
 	requestHeaders: BareHeaders,
 	remote: BareRemote
-): Promise<[IncomingMessage, Duplex, Buffer]> {
+): Promise<[res: IncomingMessage, socket: Duplex, head: Buffer]> {
 	const options = {
 		host: remote.host,
 		port: remote.port,
@@ -134,16 +139,14 @@ export async function upgradeFetch(
 	outgoing.end();
 
 	return await new Promise((resolve, reject) => {
-		outgoing.on('response', () => {
+		outgoing.on('response', (res) => {
 			reject('Remote did not upgrade the WebSocket');
+			res.destroy();
 		});
 
-		outgoing.on(
-			'upgrade',
-			(request: IncomingMessage, socket: Duplex, head: Buffer) => {
-				resolve([request, socket, head]);
-			}
-		);
+		outgoing.on('upgrade', (res, socket, head) => {
+			resolve([res, socket, head]);
+		});
 
 		outgoing.on('error', (error) => {
 			reject(outgoingError(error));
