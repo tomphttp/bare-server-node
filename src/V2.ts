@@ -408,6 +408,7 @@ async function tunnelSocket(
 	const [remoteResponse, remoteSocket] = await upgradeFetch(
 		serverConfig,
 		request,
+		socket,
 		meta.sendHeaders,
 		meta.remote
 	);
