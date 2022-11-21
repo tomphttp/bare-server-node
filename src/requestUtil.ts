@@ -1,7 +1,7 @@
 import type { Request } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
 import type { ServerConfig } from './BareServer.js';
-import type { ClientRequest, IncomingMessage, ServerResponse } from 'node:http';
+import type { ClientRequest, IncomingMessage } from 'node:http';
 import { Agent as HttpAgent, request as httpRequest } from 'node:http';
 import { Agent as HttpsAgent, request as httpsRequest } from 'node:https';
 import type { Duplex } from 'node:stream';
@@ -60,7 +60,7 @@ function outgoingError<T>(error: T): T | BareError {
 export async function fetch(
 	config: ServerConfig,
 	request: Request,
-	res: ServerResponse<IncomingMessage>,
+	signal: AbortSignal,
 	requestHeaders: BareHeaders,
 	url: BareRemote
 ): Promise<IncomingMessage> {
@@ -72,6 +72,7 @@ export async function fetch(
 		headers: requestHeaders,
 		setHost: false,
 		localAddress: config.localAddress,
+		signal,
 	};
 
 	let outgoing: ClientRequest;
@@ -89,10 +90,6 @@ export async function fetch(
 	else {
 		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 	}
-
-	res.on('close', () => {
-		outgoing.destroy();
-	});
 
 	request.body.pipe(outgoing);
 
@@ -115,7 +112,7 @@ export async function fetch(
 export async function upgradeFetch(
 	serverConfig: ServerConfig,
 	request: Request,
-	iSocket: Duplex,
+	signal: AbortSignal,
 	requestHeaders: BareHeaders,
 	remote: BareRemote
 ): Promise<[res: IncomingMessage, socket: Duplex, head: Buffer]> {
@@ -127,6 +124,7 @@ export async function upgradeFetch(
 		method: request.method,
 		setHost: false,
 		localAddress: serverConfig.localAddress,
+		// signal,
 	};
 
 	let outgoing: ClientRequest;
@@ -148,10 +146,6 @@ export async function upgradeFetch(
 		});
 
 		outgoing.on('upgrade', (res, socket, head) => {
-			iSocket.on('close', () => {
-				socket.destroy();
-			});
-
 			resolve([res, socket, head]);
 		});
 

@@ -146,9 +146,21 @@ async function tunnelRequest(
 	request: Request,
 	res: ServerResponse<IncomingMessage>
 ): Promise<Response> {
+	const abort = new AbortController();
+
+	res.on('close', () => {
+		abort.abort();
+	});
+
 	const { remote, headers } = readHeaders(request);
 
-	const response = await fetch(serverConfig, request, res, headers, remote);
+	const response = await fetch(
+		serverConfig,
+		request,
+		abort.signal,
+		headers,
+		remote
+	);
 
 	const responseHeaders = new Headers();
 
@@ -241,6 +253,12 @@ async function tunnelSocket(
 	request: Request,
 	socket: Duplex
 ) {
+	const abort = new AbortController();
+
+	socket.on('close', () => {
+		abort.abort();
+	});
+
 	if (!request.headers.has('sec-websocket-protocol')) {
 		socket.end();
 		return;
@@ -267,7 +285,7 @@ async function tunnelSocket(
 	const [remoteResponse, remoteSocket] = await upgradeFetch(
 		serverConfig,
 		request,
-		socket,
+		abort.signal,
 		headers,
 		remote
 	);
