@@ -115,7 +115,7 @@ export async function fetch(
 export async function upgradeFetch(
 	serverConfig: ServerConfig,
 	request: Request,
-	socket: Duplex,
+	iSocket: Duplex,
 	requestHeaders: BareHeaders,
 	remote: BareRemote
 ): Promise<[res: IncomingMessage, socket: Duplex, head: Buffer]> {
@@ -141,10 +141,6 @@ export async function upgradeFetch(
 
 	outgoing.end();
 
-	socket.on('close', () => {
-		outgoing.destroy();
-	});
-
 	return await new Promise((resolve, reject) => {
 		outgoing.on('response', (res) => {
 			reject('Remote did not upgrade the WebSocket');
@@ -152,6 +148,10 @@ export async function upgradeFetch(
 		});
 
 		outgoing.on('upgrade', (res, socket, head) => {
+			iSocket.on('close', () => {
+				socket.destroy();
+			});
+
 			resolve([res, socket, head]);
 		});
 
