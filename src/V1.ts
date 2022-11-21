@@ -148,6 +148,10 @@ async function tunnelRequest(
 ): Promise<Response> {
 	const abort = new AbortController();
 
+	request.body.on('close', () => {
+		if (!request.body.complete) abort.abort();
+	});
+
 	res.on('close', () => {
 		abort.abort();
 	});
@@ -254,6 +258,10 @@ async function tunnelSocket(
 	socket: Duplex
 ) {
 	const abort = new AbortController();
+
+	request.body.on('close', () => {
+		if (!request.body.complete) abort.abort();
+	});
 
 	socket.on('close', () => {
 		abort.abort();
