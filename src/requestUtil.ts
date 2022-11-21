@@ -125,7 +125,7 @@ export async function upgradeFetch(
 		method: request.method,
 		setHost: false,
 		localAddress: serverConfig.localAddress,
-		// signal,
+		signal,
 	};
 
 	let outgoing: ClientRequest;
