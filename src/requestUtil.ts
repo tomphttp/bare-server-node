@@ -10,6 +10,7 @@ const httpAgent = new HttpAgent({
 	keepAlive: true,
 	timeout: 12e3,
 });
+
 const httpsAgent = new HttpsAgent({
 	keepAlive: true,
 	timeout: 12e3,
