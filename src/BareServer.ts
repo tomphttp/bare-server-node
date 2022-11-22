@@ -28,7 +28,7 @@ const pkg = JSON.parse(
 	readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')
 ) as { version: string };
 
-const project: BareProject = {
+export const project: BareProject = {
 	name: 'bare-server-node',
 	description: 'TOMPHTTP NodeJS Bare Server',
 	repository: 'https://github.com/tomphttp/bare-server-node',
