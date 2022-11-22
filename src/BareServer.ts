@@ -1,3 +1,4 @@
+import type packageData from '../package.json';
 import { Request, Response, writeResponse } from './AbstractMessage.js';
 import type { BareHeaders } from './requestUtil.js';
 import createHttpError from 'http-errors';
@@ -26,7 +27,7 @@ export class BareError extends Error {
 
 const pkg = JSON.parse(
 	readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')
-);
+) as typeof packageData;
 
 const project: BareProject = {
 	name: 'bare-server-node',
