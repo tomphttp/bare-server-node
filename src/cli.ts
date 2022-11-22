@@ -1,5 +1,5 @@
 import './sourceMap.js';
-import { project } from './BareServer.js';
+import { pkg } from './BareServer.js';
 import createBareServer from './createServer.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
@@ -11,7 +11,7 @@ const program = new Command();
 
 program
 	.alias('server')
-	.version(project.version)
+	.version(pkg.version)
 	.option('-d, --directory <directory>', 'Bare directory', '/')
 	.option('-h, --host <host>', 'Listening host', process.env.HOST || '0.0.0.0')
 	.option<number>(
