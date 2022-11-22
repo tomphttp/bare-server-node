@@ -439,6 +439,30 @@ async function tunnelSocket(
 		meta.remote
 	);
 
+	remoteSocket.on('close', () => {
+		socket.end();
+	});
+
+	socket.on('close', () => {
+		remoteSocket.end();
+	});
+
+	remoteSocket.on('error', (error) => {
+		if (serverConfig.logErrors) {
+			console.error('Remote socket error:', error);
+		}
+
+		socket.end();
+	});
+
+	socket.on('error', (error) => {
+		if (serverConfig.logErrors) {
+			console.error('Serving socket error:', error);
+		}
+
+		remoteSocket.end();
+	});
+
 	const remoteHeaders = new Headers(<HeadersInit>remoteResponse.headers);
 
 	meta.response = {
@@ -471,30 +495,6 @@ async function tunnelSocket(
 	}
 
 	socket.write(responseHeaders.concat('', '').join('\r\n'));
-
-	remoteSocket.on('close', () => {
-		socket.end();
-	});
-
-	socket.on('close', () => {
-		remoteSocket.end();
-	});
-
-	remoteSocket.on('error', (error) => {
-		if (serverConfig.logErrors) {
-			console.error('Remote socket error:', error);
-		}
-
-		socket.end();
-	});
-
-	socket.on('error', (error) => {
-		if (serverConfig.logErrors) {
-			console.error('Serving socket error:', error);
-		}
-
-		remoteSocket.end();
-	});
 
 	remoteSocket.pipe(socket);
 	socket.pipe(remoteSocket);

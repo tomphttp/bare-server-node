@@ -298,30 +298,6 @@ async function tunnelSocket(
 		remote
 	);
 
-	if (tempMeta.has(id)) {
-		tempMeta.get(id)!.response = {
-			headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
-				...(<BareHeaders>remoteResponse.headers),
-			}),
-		};
-	}
-
-	const responseHeaders = [
-		`HTTP/1.1 101 Switching Protocols`,
-		`Upgrade: websocket`,
-		`Connection: Upgrade`,
-		`Sec-WebSocket-Protocol: bare`,
-		`Sec-WebSocket-Accept: ${remoteResponse.headers['sec-websocket-accept']}`,
-	];
-
-	if ('sec-websocket-extensions' in remoteResponse.headers) {
-		responseHeaders.push(
-			`Sec-WebSocket-Extensions: ${remoteResponse.headers['sec-websocket-extensions']}`
-		);
-	}
-
-	socket.write(responseHeaders.concat('', '').join('\r\n'));
-
 	remoteSocket.on('close', () => {
 		// console.log('Remote closed');
 		socket.end();
@@ -345,6 +321,30 @@ async function tunnelSocket(
 		}
 		remoteSocket.end();
 	});
+
+	if (tempMeta.has(id)) {
+		tempMeta.get(id)!.response = {
+			headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
+				...(<BareHeaders>remoteResponse.headers),
+			}),
+		};
+	}
+
+	const responseHeaders = [
+		`HTTP/1.1 101 Switching Protocols`,
+		`Upgrade: websocket`,
+		`Connection: Upgrade`,
+		`Sec-WebSocket-Protocol: bare`,
+		`Sec-WebSocket-Accept: ${remoteResponse.headers['sec-websocket-accept']}`,
+	];
+
+	if ('sec-websocket-extensions' in remoteResponse.headers) {
+		responseHeaders.push(
+			`Sec-WebSocket-Extensions: ${remoteResponse.headers['sec-websocket-extensions']}`
+		);
+	}
+
+	socket.write(responseHeaders.concat('', '').join('\r\n'));
 
 	remoteSocket.pipe(socket);
 	socket.pipe(remoteSocket);
