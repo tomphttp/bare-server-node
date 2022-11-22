@@ -23,16 +23,16 @@
 	],
 	"license": "GPL-3.0",
 	"type": "commonjs",
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"bin": "bin.js",
 	"main": "dist/createServer.js",
 	"types": "dist/createServer.d.ts",
 	"files": [
 		"dist",
 		"bin.js"
 	],
-	"engines": {
-		"node": ">=18.0.0"
-	},
-	"bin": "bin.js",
 	"scripts": {
 		"build": "tsc",
 		"build:watch": "tsc --watch"
