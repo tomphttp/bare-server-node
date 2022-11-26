@@ -99,28 +99,26 @@ export interface ServerConfig {
 	maintainer?: BareMaintainer;
 }
 
+export type RouteCallback = (
+	request: Request,
+	response: ServerResponse<IncomingMessage>,
+	serverConfig: ServerConfig,
+	httpAgent: HttpAgent,
+	httpsAgent: HttpsAgent
+) => Promise<Response> | Response;
+
+export type SocketRouteCallback = (
+	request: Request,
+	socket: Duplex,
+	head: Buffer,
+	serverConfig: ServerConfig,
+	httpAgent: HttpAgent,
+	httpsAgent: HttpsAgent
+) => Promise<void> | void;
+
 export default class Server extends EventEmitter {
-	routes: Map<
-		string,
-		(
-			request: Request,
-			response: ServerResponse<IncomingMessage>,
-			serverConfig: ServerConfig,
-			httpAgent: HttpAgent,
-			httpsAgent: HttpsAgent
-		) => Promise<Response> | Response
-	>;
-	socketRoutes: Map<
-		string,
-		(
-			request: Request,
-			socket: Duplex,
-			head: Buffer,
-			serverConfig: ServerConfig,
-			httpAgent: HttpAgent,
-			httpsAgent: HttpsAgent
-		) => Promise<void> | void
-	>;
+	routes: Map<string, RouteCallback>;
+	socketRoutes: Map<string, SocketRouteCallback>;
 	private directory: string;
 	private config: ServerConfig;
 	private httpAgent = new HttpAgent({

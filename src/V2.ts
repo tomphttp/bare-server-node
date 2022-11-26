@@ -1,7 +1,7 @@
 import type { Request } from './AbstractMessage.js';
 import { Response } from './AbstractMessage.js';
+import type { RouteCallback, SocketRouteCallback } from './BareServer.js';
 import { BareError } from './BareServer.js';
-import type { ServerConfig } from './BareServer.js';
 import type Server from './BareServer.js';
 import {
 	flattenHeader,
@@ -13,13 +13,6 @@ import { fetch, upgradeFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
 import { Headers } from 'headers-polyfill';
 import { randomBytes } from 'node:crypto';
-import type {
-	IncomingMessage,
-	ServerResponse,
-	Agent as HttpAgent,
-} from 'node:http';
-import type { Agent as HttpsAgent } from 'node:https';
-import type { Duplex } from 'node:stream';
 import { promisify } from 'node:util';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
@@ -267,13 +260,13 @@ function readHeaders(request: Request): BareHeaderData {
 	};
 }
 
-async function tunnelRequest(
-	request: Request,
-	res: ServerResponse<IncomingMessage>,
-	serverConfig: ServerConfig,
-	httpAgent: HttpAgent,
-	httpsAgent: HttpsAgent
-): Promise<Response> {
+const tunnelRequest: RouteCallback = async (
+	request,
+	res,
+	serverConfig,
+	httpAgent,
+	httpsAgent
+) => {
 	const abort = new AbortController();
 
 	request.body.on('close', () => {
@@ -327,7 +320,7 @@ async function tunnelRequest(
 		status,
 		headers: splitHeaders(responseHeaders),
 	});
-}
+};
 
 interface Meta {
 	response?: { status: number; statusText: string; headers: BareHeaders };
@@ -341,7 +334,7 @@ const tempMeta: Map<string, Meta> = new Map();
 
 const metaExpiration = 30e3;
 
-async function getMeta(request: Request): Promise<Response> {
+const getMeta: RouteCallback = (request) => {
 	if (request.method === 'OPTIONS') {
 		return new Response(undefined, { status: 200 });
 	}
@@ -386,9 +379,9 @@ async function getMeta(request: Request): Promise<Response> {
 		status: 200,
 		headers: splitHeaders(responseHeaders),
 	});
-}
+};
 
-async function newMeta(request: Request): Promise<Response> {
+const newMeta: RouteCallback = async (request) => {
 	const { remote, sendHeaders, forwardHeaders } = readHeaders(request);
 
 	const id = (await randomBytesAsync(32)).toString('hex');
@@ -401,16 +394,16 @@ async function newMeta(request: Request): Promise<Response> {
 	});
 
 	return new Response(Buffer.from(id));
-}
+};
 
-async function tunnelSocket(
-	request: Request,
-	socket: Duplex,
-	head: Buffer,
-	serverConfig: ServerConfig,
-	httpAgent: HttpAgent,
-	httpsAgent: HttpsAgent
-) {
+const tunnelSocket: SocketRouteCallback = async (
+	request,
+	socket,
+	head,
+	serverConfig,
+	httpAgent,
+	httpsAgent
+) => {
 	const abort = new AbortController();
 
 	request.body.on('close', () => {
@@ -506,7 +499,7 @@ async function tunnelSocket(
 
 	remoteSocket.pipe(socket);
 	socket.pipe(remoteSocket);
-}
+};
 
 export default function registerV2(server: Server) {
 	server.routes.set('/v2/', tunnelRequest);

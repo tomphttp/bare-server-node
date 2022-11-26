@@ -1,6 +1,6 @@
 import type { Request } from './AbstractMessage.js';
 import { Response } from './AbstractMessage.js';
-import type { ServerConfig } from './BareServer.js';
+import type { RouteCallback, SocketRouteCallback } from './BareServer.js';
 import type Server from './BareServer.js';
 import { BareError, json } from './BareServer.js';
 import { decodeProtocol } from './encodeProtocol.js';
@@ -13,13 +13,6 @@ import type { BareHeaders, BareRemote } from './requestUtil.js';
 import { fetch, upgradeFetch } from './requestUtil.js';
 import { Headers } from 'headers-polyfill';
 import { randomBytes } from 'node:crypto';
-import type {
-	IncomingMessage,
-	ServerResponse,
-	Agent as HttpAgent,
-} from 'node:http';
-import type { Agent as HttpsAgent } from 'node:https';
-import type { Duplex } from 'node:stream';
 import { promisify } from 'node:util';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
@@ -146,13 +139,13 @@ function readHeaders(request: Request): BareHeaderData {
 	return { remote: <BareRemote>remote, headers };
 }
 
-async function tunnelRequest(
-	request: Request,
-	res: ServerResponse<IncomingMessage>,
-	serverConfig: ServerConfig,
-	httpAgent: HttpAgent,
-	httpsAgent: HttpsAgent
-): Promise<Response> {
+const tunnelRequest: RouteCallback = async (
+	request,
+	res,
+	serverConfig,
+	httpAgent,
+	httpsAgent
+) => {
 	const abort = new AbortController();
 
 	request.body.on('close', () => {
@@ -203,7 +196,7 @@ async function tunnelRequest(
 	responseHeaders.set('x-bare-status-text', response.statusMessage!);
 
 	return new Response(response, { status: 200, headers: responseHeaders });
-}
+};
 
 interface Meta {
 	response?: {
@@ -216,7 +209,7 @@ const tempMeta: Map<string, Meta> = new Map();
 
 const metaExpiration = 30e3;
 
-async function wsMeta(request: Request): Promise<Response> {
+const wsMeta: RouteCallback = (request) => {
 	if (request.method === 'OPTIONS') {
 		return new Response(undefined, { status: 200 });
 	}
@@ -246,9 +239,9 @@ async function wsMeta(request: Request): Promise<Response> {
 	return json(200, {
 		headers: meta.response?.headers,
 	});
-}
+};
 
-async function wsNewMeta(): Promise<Response> {
+const wsNewMeta: RouteCallback = async () => {
 	const id = (await randomBytesAsync(32)).toString('hex');
 
 	tempMeta.set(id, {
@@ -256,16 +249,16 @@ async function wsNewMeta(): Promise<Response> {
 	});
 
 	return new Response(Buffer.from(id));
-}
+};
 
-async function tunnelSocket(
-	request: Request,
-	socket: Duplex,
-	head: Buffer,
-	serverConfig: ServerConfig,
-	httpAgent: HttpAgent,
-	httpsAgent: HttpsAgent
-) {
+const tunnelSocket: SocketRouteCallback = async (
+	request,
+	socket,
+	head,
+	serverConfig,
+	httpAgent,
+	httpsAgent
+) => {
 	const abort = new AbortController();
 
 	request.body.on('close', () => {
@@ -359,7 +352,7 @@ async function tunnelSocket(
 
 	remoteSocket.pipe(socket);
 	socket.pipe(remoteSocket);
-}
+};
 
 export default function registerV1(server: Server) {
 	server.routes.set('/v1/', tunnelRequest);
