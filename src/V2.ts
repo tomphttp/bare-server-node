@@ -268,9 +268,9 @@ function readHeaders(request: Request): BareHeaderData {
 }
 
 async function tunnelRequest(
-	serverConfig: ServerConfig,
 	request: Request,
 	res: ServerResponse<IncomingMessage>,
+	serverConfig: ServerConfig,
 	httpAgent: HttpAgent,
 	httpsAgent: HttpsAgent
 ): Promise<Response> {
@@ -290,13 +290,13 @@ async function tunnelRequest(
 	loadForwardedHeaders(forwardHeaders, sendHeaders, request);
 
 	const response = await fetch(
-		serverConfig,
-		httpAgent,
-		httpsAgent,
 		request,
 		abort.signal,
 		sendHeaders,
-		remote
+		remote,
+		serverConfig,
+		httpAgent,
+		httpsAgent
 	);
 
 	const responseHeaders = new Headers();
@@ -341,10 +341,7 @@ const tempMeta: Map<string, Meta> = new Map();
 
 const metaExpiration = 30e3;
 
-async function getMeta(
-	serverConfig: ServerConfig,
-	request: Request
-): Promise<Response> {
+async function getMeta(request: Request): Promise<Response> {
 	if (request.method === 'OPTIONS') {
 		return new Response(undefined, { status: 200 });
 	}
@@ -391,10 +388,7 @@ async function getMeta(
 	});
 }
 
-async function newMeta(
-	serverConfig: ServerConfig,
-	request: Request
-): Promise<Response> {
+async function newMeta(request: Request): Promise<Response> {
 	const { remote, sendHeaders, forwardHeaders } = readHeaders(request);
 
 	const id = (await randomBytesAsync(32)).toString('hex');
@@ -410,10 +404,10 @@ async function newMeta(
 }
 
 async function tunnelSocket(
-	serverConfig: ServerConfig,
 	request: Request,
 	socket: Duplex,
 	head: Buffer,
+	serverConfig: ServerConfig,
 	httpAgent: HttpAgent,
 	httpsAgent: HttpsAgent
 ) {
@@ -444,13 +438,13 @@ async function tunnelSocket(
 	loadForwardedHeaders(meta.forwardHeaders, meta.sendHeaders, request);
 
 	const [remoteResponse, remoteSocket] = await upgradeFetch(
-		serverConfig,
-		httpAgent,
-		httpsAgent,
 		request,
 		abort.signal,
 		meta.sendHeaders,
-		meta.remote
+		meta.remote,
+		serverConfig,
+		httpAgent,
+		httpsAgent
 	);
 
 	remoteSocket.on('close', () => {

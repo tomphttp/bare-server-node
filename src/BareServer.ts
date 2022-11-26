@@ -103,9 +103,9 @@ export default class Server extends EventEmitter {
 	routes: Map<
 		string,
 		(
-			serverConfig: ServerConfig,
 			request: Request,
 			response: ServerResponse<IncomingMessage>,
+			serverConfig: ServerConfig,
 			httpAgent: HttpAgent,
 			httpsAgent: HttpsAgent
 		) => Promise<Response> | Response
@@ -113,10 +113,10 @@ export default class Server extends EventEmitter {
 	socketRoutes: Map<
 		string,
 		(
-			serverConfig: ServerConfig,
 			request: Request,
 			socket: Duplex,
 			head: Buffer,
+			serverConfig: ServerConfig,
 			httpAgent: HttpAgent,
 			httpsAgent: HttpsAgent
 		) => Promise<void> | void
@@ -189,10 +189,10 @@ export default class Server extends EventEmitter {
 
 			try {
 				await call(
-					this.config,
 					request,
 					socket,
 					head,
+					this.config,
 					this.httpAgent,
 					this.httpsAgent
 				);
@@ -225,9 +225,9 @@ export default class Server extends EventEmitter {
 			} else if (this.routes.has(service)) {
 				const call = this.routes.get(service)!;
 				response = await call(
-					this.config,
 					request,
 					res,
+					this.config,
 					this.httpAgent,
 					this.httpsAgent
 				);

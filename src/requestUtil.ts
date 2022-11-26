@@ -54,13 +54,13 @@ function outgoingError<T>(error: T): T | BareError {
 }
 
 export async function fetch(
-	config: ServerConfig,
-	httpAgent: HttpAgent,
-	httpsAgent: HttpsAgent,
 	request: Request,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
-	url: BareRemote
+	url: BareRemote,
+	config: ServerConfig,
+	httpAgent: HttpAgent,
+	httpsAgent: HttpsAgent
 ): Promise<IncomingMessage> {
 	const options = {
 		host: url.host,
@@ -108,13 +108,13 @@ export async function fetch(
 }
 
 export async function upgradeFetch(
-	serverConfig: ServerConfig,
-	httpAgent: HttpAgent,
-	httpsAgent: HttpsAgent,
 	request: Request,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
-	remote: BareRemote
+	remote: BareRemote,
+	serverConfig: ServerConfig,
+	httpAgent: HttpAgent,
+	httpsAgent: HttpsAgent
 ): Promise<[res: IncomingMessage, socket: Duplex, head: Buffer]> {
 	const options = {
 		host: remote.host,
