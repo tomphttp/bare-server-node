@@ -91,29 +91,29 @@ export interface BareServerInit {
 	logErrors?: boolean;
 	localAddress?: string;
 	maintainer?: BareMaintainer;
+	httpAgent?: HttpAgent;
+	httpsAgent?: HttpsAgent;
 }
 
 export interface ServerConfig {
 	logErrors: boolean;
 	localAddress?: string;
 	maintainer?: BareMaintainer;
+	httpAgent: HttpAgent;
+	httpsAgent: HttpsAgent;
 }
 
 export type RouteCallback = (
 	request: Request,
 	response: ServerResponse<IncomingMessage>,
-	serverConfig: ServerConfig,
-	httpAgent: HttpAgent,
-	httpsAgent: HttpsAgent
+	serverConfig: ServerConfig
 ) => Promise<Response> | Response;
 
 export type SocketRouteCallback = (
 	request: Request,
 	socket: Duplex,
 	head: Buffer,
-	serverConfig: ServerConfig,
-	httpAgent: HttpAgent,
-	httpsAgent: HttpsAgent
+	serverConfig: ServerConfig
 ) => Promise<void> | void;
 
 export default class Server extends EventEmitter {
@@ -121,14 +121,6 @@ export default class Server extends EventEmitter {
 	socketRoutes: Map<string, SocketRouteCallback>;
 	private directory: string;
 	private config: ServerConfig;
-	private httpAgent = new HttpAgent({
-		keepAlive: true,
-		timeout: 12e3,
-	});
-	private httpsAgent = new HttpsAgent({
-		keepAlive: true,
-		timeout: 12e3,
-	});
 	/**
 	 * @internal
 	 */
@@ -136,6 +128,14 @@ export default class Server extends EventEmitter {
 		super();
 
 		init.logErrors ??= false;
+		init.httpAgent ??= new HttpAgent({
+			keepAlive: true,
+			timeout: 12e3,
+		});
+		init.httpsAgent ??= new HttpsAgent({
+			keepAlive: true,
+			timeout: 12e3,
+		});
 
 		this.config = <ServerConfig>init;
 
@@ -156,8 +156,8 @@ export default class Server extends EventEmitter {
 	 * Remove all timers and listeners
 	 */
 	close() {
-		this.httpAgent.destroy();
-		this.httpsAgent.destroy();
+		this.config.httpAgent.destroy();
+		this.config.httpsAgent.destroy();
 		this.emit('close');
 	}
 	shouldRoute(request: IncomingMessage): boolean {
@@ -186,14 +186,7 @@ export default class Server extends EventEmitter {
 			const call = this.socketRoutes.get(service)!;
 
 			try {
-				await call(
-					request,
-					socket,
-					head,
-					this.config,
-					this.httpAgent,
-					this.httpsAgent
-				);
+				await call(request, socket, head, this.config);
 			} catch (error) {
 				if (this.config.logErrors) {
 					console.error(error);
@@ -222,13 +215,7 @@ export default class Server extends EventEmitter {
 				response = json(200, this.instanceInfo);
 			} else if (this.routes.has(service)) {
 				const call = this.routes.get(service)!;
-				response = await call(
-					request,
-					res,
-					this.config,
-					this.httpAgent,
-					this.httpsAgent
-				);
+				response = await call(request, res, this.config);
 			} else {
 				throw new createHttpError.NotFound();
 			}

@@ -260,13 +260,7 @@ function readHeaders(request: Request): BareHeaderData {
 	};
 }
 
-const tunnelRequest: RouteCallback = async (
-	request,
-	res,
-	serverConfig,
-	httpAgent,
-	httpsAgent
-) => {
+const tunnelRequest: RouteCallback = async (request, res, serverConfig) => {
 	const abort = new AbortController();
 
 	request.body.on('close', () => {
@@ -287,9 +281,7 @@ const tunnelRequest: RouteCallback = async (
 		abort.signal,
 		sendHeaders,
 		remote,
-		serverConfig,
-		httpAgent,
-		httpsAgent
+		serverConfig
 	);
 
 	const responseHeaders = new Headers();
@@ -400,9 +392,7 @@ const tunnelSocket: SocketRouteCallback = async (
 	request,
 	socket,
 	head,
-	serverConfig,
-	httpAgent,
-	httpsAgent
+	serverConfig
 ) => {
 	const abort = new AbortController();
 
@@ -435,9 +425,7 @@ const tunnelSocket: SocketRouteCallback = async (
 		abort.signal,
 		meta.sendHeaders,
 		meta.remote,
-		serverConfig,
-		httpAgent,
-		httpsAgent
+		serverConfig
 	);
 
 	remoteSocket.on('close', () => {

@@ -1,13 +1,8 @@
 import type { Request } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
 import type { ServerConfig } from './BareServer.js';
-import type {
-	ClientRequest,
-	IncomingMessage,
-	Agent as HttpAgent,
-} from 'node:http';
+import type { ClientRequest, IncomingMessage } from 'node:http';
 import { request as httpRequest } from 'node:http';
-import type { Agent as HttpsAgent } from 'node:https';
 import { request as httpsRequest } from 'node:https';
 import type { Duplex } from 'node:stream';
 
@@ -58,9 +53,7 @@ export async function fetch(
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
 	url: BareRemote,
-	config: ServerConfig,
-	httpAgent: HttpAgent,
-	httpsAgent: HttpsAgent
+	config: ServerConfig
 ): Promise<IncomingMessage> {
 	const options = {
 		host: url.host,
@@ -78,12 +71,12 @@ export async function fetch(
 	if (url.protocol === 'https:')
 		outgoing = httpsRequest({
 			...options,
-			agent: httpsAgent,
+			agent: config.httpsAgent,
 		});
 	else if (url.protocol === 'http:')
 		outgoing = httpRequest({
 			...options,
-			agent: httpAgent,
+			agent: config.httpAgent,
 		});
 	else {
 		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
@@ -112,9 +105,7 @@ export async function upgradeFetch(
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
 	remote: BareRemote,
-	serverConfig: ServerConfig,
-	httpAgent: HttpAgent,
-	httpsAgent: HttpsAgent
+	serverConfig: ServerConfig
 ): Promise<[res: IncomingMessage, socket: Duplex, head: Buffer]> {
 	const options = {
 		host: remote.host,
@@ -130,9 +121,9 @@ export async function upgradeFetch(
 	let outgoing: ClientRequest;
 
 	if (remote.protocol === 'wss:') {
-		outgoing = httpsRequest({ ...options, agent: httpsAgent });
+		outgoing = httpsRequest({ ...options, agent: serverConfig.httpsAgent });
 	} else if (remote.protocol === 'ws:') {
-		outgoing = httpRequest({ ...options, agent: httpAgent });
+		outgoing = httpRequest({ ...options, agent: serverConfig.httpAgent });
 	} else {
 		throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
 	}
