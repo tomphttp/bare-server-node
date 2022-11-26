@@ -139,7 +139,7 @@ function readHeaders(request: Request): BareHeaderData {
 	return { remote: <BareRemote>remote, headers };
 }
 
-const tunnelRequest: RouteCallback = async (request, res, serverConfig) => {
+const tunnelRequest: RouteCallback = async (request, res, options) => {
 	const abort = new AbortController();
 
 	request.body.on('close', () => {
@@ -152,13 +152,7 @@ const tunnelRequest: RouteCallback = async (request, res, serverConfig) => {
 
 	const { remote, headers } = readHeaders(request);
 
-	const response = await fetch(
-		request,
-		abort.signal,
-		headers,
-		remote,
-		serverConfig
-	);
+	const response = await fetch(request, abort.signal, headers, remote, options);
 
 	const responseHeaders = new Headers();
 
@@ -247,7 +241,7 @@ const tunnelSocket: SocketRouteCallback = async (
 	request,
 	socket,
 	head,
-	serverConfig
+	options
 ) => {
 	const abort = new AbortController();
 
@@ -287,7 +281,7 @@ const tunnelSocket: SocketRouteCallback = async (
 		abort.signal,
 		headers,
 		remote,
-		serverConfig
+		options
 	);
 
 	remoteSocket.on('close', () => {
@@ -301,14 +295,14 @@ const tunnelSocket: SocketRouteCallback = async (
 	});
 
 	remoteSocket.on('error', (error) => {
-		if (serverConfig.logErrors) {
+		if (options.logErrors) {
 			console.error('Remote socket error:', error);
 		}
 		socket.end();
 	});
 
 	socket.on('error', (error) => {
-		if (serverConfig.logErrors) {
+		if (options.logErrors) {
 			console.error('Serving socket error:', error);
 		}
 		remoteSocket.end();

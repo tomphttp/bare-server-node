@@ -1,6 +1,6 @@
 import type { Request } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
-import type { ServerConfig } from './BareServer.js';
+import type { Options } from './BareServer.js';
 import type { ClientRequest, IncomingMessage } from 'node:http';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
@@ -53,16 +53,16 @@ export async function fetch(
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
 	url: BareRemote,
-	config: ServerConfig
+	options: Options
 ): Promise<IncomingMessage> {
-	const options = {
+	const req = {
 		host: url.host,
 		port: url.port,
 		path: url.path,
 		method: request.method,
 		headers: requestHeaders,
 		setHost: false,
-		localAddress: config.localAddress,
+		localAddress: options.localAddress,
 		signal,
 	};
 
@@ -70,13 +70,13 @@ export async function fetch(
 
 	if (url.protocol === 'https:')
 		outgoing = httpsRequest({
-			...options,
-			agent: config.httpsAgent,
+			...req,
+			agent: options.httpsAgent,
 		});
 	else if (url.protocol === 'http:')
 		outgoing = httpRequest({
-			...options,
-			agent: config.httpAgent,
+			...req,
+			agent: options.httpAgent,
 		});
 	else throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 
@@ -103,25 +103,25 @@ export async function upgradeFetch(
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
 	remote: BareRemote,
-	serverConfig: ServerConfig
+	options: Options
 ): Promise<[res: IncomingMessage, socket: Duplex, head: Buffer]> {
-	const options = {
+	const req = {
 		host: remote.host,
 		port: remote.port,
 		path: remote.path,
 		headers: requestHeaders,
 		method: request.method,
 		setHost: false,
-		localAddress: serverConfig.localAddress,
+		localAddress: options.localAddress,
 		signal,
 	};
 
 	let outgoing: ClientRequest;
 
 	if (remote.protocol === 'wss:')
-		outgoing = httpsRequest({ ...options, agent: serverConfig.httpsAgent });
+		outgoing = httpsRequest({ ...req, agent: options.httpsAgent });
 	else if (remote.protocol === 'ws:')
-		outgoing = httpRequest({ ...options, agent: serverConfig.httpAgent });
+		outgoing = httpRequest({ ...req, agent: options.httpAgent });
 	else throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
 
 	outgoing.end();

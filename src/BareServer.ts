@@ -95,7 +95,7 @@ export interface BareServerInit {
 	httpsAgent?: HttpsAgent;
 }
 
-export interface ServerConfig {
+export interface Options {
 	logErrors: boolean;
 	localAddress?: string;
 	maintainer?: BareMaintainer;
@@ -106,25 +106,25 @@ export interface ServerConfig {
 export type RouteCallback = (
 	request: Request,
 	response: ServerResponse<IncomingMessage>,
-	serverConfig: ServerConfig
+	options: Options
 ) => Promise<Response> | Response;
 
 export type SocketRouteCallback = (
 	request: Request,
 	socket: Duplex,
 	head: Buffer,
-	serverConfig: ServerConfig
+	options: Options
 ) => Promise<void> | void;
 
 export default class Server extends EventEmitter {
 	routes: Map<string, RouteCallback>;
 	socketRoutes: Map<string, SocketRouteCallback>;
 	private directory: string;
-	private config: ServerConfig;
+	private options: Options;
 	/**
 	 * @internal
 	 */
-	constructor(directory: string, init: Partial<ServerConfig> = {}) {
+	constructor(directory: string, init: Partial<Options> = {}) {
 		super();
 
 		init.logErrors ??= false;
@@ -137,7 +137,7 @@ export default class Server extends EventEmitter {
 			timeout: 12e3,
 		});
 
-		this.config = <ServerConfig>init;
+		this.options = <Options>init;
 
 		this.routes = new Map();
 		this.socketRoutes = new Map();
@@ -156,8 +156,8 @@ export default class Server extends EventEmitter {
 	 * Remove all timers and listeners
 	 */
 	close() {
-		this.config.httpAgent.destroy();
-		this.config.httpsAgent.destroy();
+		this.options.httpAgent.destroy();
+		this.options.httpsAgent.destroy();
 		this.emit('close');
 	}
 	shouldRoute(request: IncomingMessage): boolean {
@@ -169,7 +169,7 @@ export default class Server extends EventEmitter {
 			language: 'NodeJS',
 			memoryUsage:
 				Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
-			maintainer: this.config.maintainer,
+			maintainer: this.options.maintainer,
 			project,
 		};
 	}
@@ -186,9 +186,9 @@ export default class Server extends EventEmitter {
 			const call = this.socketRoutes.get(service)!;
 
 			try {
-				await call(request, socket, head, this.config);
+				await call(request, socket, head, this.options);
 			} catch (error) {
-				if (this.config.logErrors) {
+				if (this.options.logErrors) {
 					console.error(error);
 				}
 
@@ -215,12 +215,12 @@ export default class Server extends EventEmitter {
 				response = json(200, this.instanceInfo);
 			} else if (this.routes.has(service)) {
 				const call = this.routes.get(service)!;
-				response = await call(request, res, this.config);
+				response = await call(request, res, this.options);
 			} else {
 				throw new createHttpError.NotFound();
 			}
 		} catch (error) {
-			if (this.config.logErrors) {
+			if (this.options.logErrors) {
 				console.error(error);
 			}
 
@@ -241,7 +241,7 @@ export default class Server extends EventEmitter {
 			}
 
 			if (!(response instanceof Response)) {
-				if (this.config.logErrors) {
+				if (this.options.logErrors) {
 					console.error(
 						'Cannot',
 						request.method,
