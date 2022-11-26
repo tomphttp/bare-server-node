@@ -3,6 +3,7 @@ import { pkg } from './BareServer.js';
 import createBareServer from './createServer.js';
 import { Command } from 'commander';
 import { config } from 'dotenv';
+import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 
 config();
@@ -32,16 +33,21 @@ program
 	)
 	.option(
 		'-m, --maintainer <{email?:string,website?:string}>',
-		'Bare Server maintainer field'
+		'Inline maintainer data'
+	)
+	.option(
+		'-mf, --maintainer-file <string>',
+		'Path to a file containing the maintainer data'
 	)
 	.action(
-		({
+		async ({
 			directory,
 			errors,
 			host,
 			port,
 			localAddress,
 			maintainer,
+			maintainerFile,
 		}: {
 			directory: string;
 			errors: boolean;
@@ -49,12 +55,16 @@ program
 			port: number;
 			localAddress?: string;
 			maintainer?: string;
+			maintainerFile?: string;
 		}) => {
 			const config = {
 				logErrors: errors,
 				localAddress,
-				maintainer:
-					typeof maintainer === 'string' ? JSON.parse(maintainer) : undefined,
+				maintainer: maintainer
+					? JSON.parse(maintainer)
+					: maintainerFile
+					? JSON.parse(await readFile(maintainerFile, 'utf-8'))
+					: undefined,
 			};
 			const bareServer = createBareServer(directory, config);
 
