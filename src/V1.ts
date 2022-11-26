@@ -13,7 +13,12 @@ import type { BareHeaders, BareRemote } from './requestUtil.js';
 import { fetch, upgradeFetch } from './requestUtil.js';
 import { Headers } from 'headers-polyfill';
 import { randomBytes } from 'node:crypto';
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type {
+	IncomingMessage,
+	ServerResponse,
+	Agent as HttpAgent,
+} from 'node:http';
+import type { Agent as HttpsAgent } from 'node:https';
 import type { Duplex } from 'node:stream';
 import { promisify } from 'node:util';
 
@@ -144,7 +149,9 @@ function readHeaders(request: Request): BareHeaderData {
 async function tunnelRequest(
 	serverConfig: ServerConfig,
 	request: Request,
-	res: ServerResponse<IncomingMessage>
+	res: ServerResponse<IncomingMessage>,
+	httpAgent: HttpAgent,
+	httpsAgent: HttpsAgent
 ): Promise<Response> {
 	const abort = new AbortController();
 
@@ -160,6 +167,8 @@ async function tunnelRequest(
 
 	const response = await fetch(
 		serverConfig,
+		httpAgent,
+		httpsAgent,
 		request,
 		abort.signal,
 		headers,
@@ -255,7 +264,10 @@ async function wsNewMeta(): Promise<Response> {
 async function tunnelSocket(
 	serverConfig: ServerConfig,
 	request: Request,
-	socket: Duplex
+	socket: Duplex,
+	head: Buffer,
+	httpAgent: HttpAgent,
+	httpsAgent: HttpsAgent
 ) {
 	const abort = new AbortController();
 
@@ -292,6 +304,8 @@ async function tunnelSocket(
 
 	const [remoteResponse, remoteSocket] = await upgradeFetch(
 		serverConfig,
+		httpAgent,
+		httpsAgent,
 		request,
 		abort.signal,
 		headers,

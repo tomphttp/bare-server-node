@@ -3,7 +3,9 @@ import type { BareHeaders } from './requestUtil.js';
 import createHttpError from 'http-errors';
 import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
+import { Agent as HttpAgent } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
 import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
 
@@ -103,7 +105,9 @@ export default class Server extends EventEmitter {
 		(
 			serverConfig: ServerConfig,
 			request: Request,
-			response: ServerResponse<IncomingMessage>
+			response: ServerResponse<IncomingMessage>,
+			httpAgent: HttpAgent,
+			httpsAgent: HttpsAgent
 		) => Promise<Response> | Response
 	>;
 	socketRoutes: Map<
@@ -112,11 +116,21 @@ export default class Server extends EventEmitter {
 			serverConfig: ServerConfig,
 			request: Request,
 			socket: Duplex,
-			head: Buffer
+			head: Buffer,
+			httpAgent: HttpAgent,
+			httpsAgent: HttpsAgent
 		) => Promise<void> | void
 	>;
 	private directory: string;
 	private config: ServerConfig;
+	private httpAgent = new HttpAgent({
+		keepAlive: true,
+		timeout: 12e3,
+	});
+	private httpsAgent = new HttpsAgent({
+		keepAlive: true,
+		timeout: 12e3,
+	});
 	/**
 	 * @internal
 	 */
@@ -144,6 +158,8 @@ export default class Server extends EventEmitter {
 	 * Remove all timers and listeners
 	 */
 	close() {
+		this.httpAgent.destroy();
+		this.httpsAgent.destroy();
 		this.emit('close');
 	}
 	shouldRoute(request: IncomingMessage): boolean {
@@ -172,7 +188,14 @@ export default class Server extends EventEmitter {
 			const call = this.socketRoutes.get(service)!;
 
 			try {
-				await call(this.config, request, socket, head);
+				await call(
+					this.config,
+					request,
+					socket,
+					head,
+					this.httpAgent,
+					this.httpsAgent
+				);
 			} catch (error) {
 				if (this.config.logErrors) {
 					console.error(error);
@@ -201,7 +224,13 @@ export default class Server extends EventEmitter {
 				response = json(200, this.instanceInfo);
 			} else if (this.routes.has(service)) {
 				const call = this.routes.get(service)!;
-				response = await call(this.config, request, res);
+				response = await call(
+					this.config,
+					request,
+					res,
+					this.httpAgent,
+					this.httpsAgent
+				);
 			} else {
 				throw new createHttpError.NotFound();
 			}

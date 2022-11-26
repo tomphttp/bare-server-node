@@ -1,20 +1,15 @@
 import type { Request } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
 import type { ServerConfig } from './BareServer.js';
-import type { ClientRequest, IncomingMessage } from 'node:http';
-import { Agent as HttpAgent, request as httpRequest } from 'node:http';
-import { Agent as HttpsAgent, request as httpsRequest } from 'node:https';
+import type {
+	ClientRequest,
+	IncomingMessage,
+	Agent as HttpAgent,
+} from 'node:http';
+import { request as httpRequest } from 'node:http';
+import type { Agent as HttpsAgent } from 'node:https';
+import { request as httpsRequest } from 'node:https';
 import type { Duplex } from 'node:stream';
-
-const httpAgent = new HttpAgent({
-	keepAlive: true,
-	timeout: 12e3,
-});
-
-const httpsAgent = new HttpsAgent({
-	keepAlive: true,
-	timeout: 12e3,
-});
 
 export interface BareRemote {
 	host: string;
@@ -60,6 +55,8 @@ function outgoingError<T>(error: T): T | BareError {
 
 export async function fetch(
 	config: ServerConfig,
+	httpAgent: HttpAgent,
+	httpsAgent: HttpsAgent,
 	request: Request,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
@@ -112,6 +109,8 @@ export async function fetch(
 
 export async function upgradeFetch(
 	serverConfig: ServerConfig,
+	httpAgent: HttpAgent,
+	httpsAgent: HttpsAgent,
 	request: Request,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
