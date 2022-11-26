@@ -78,9 +78,7 @@ export async function fetch(
 			...options,
 			agent: config.httpAgent,
 		});
-	else {
-		throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
-	}
+	else throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
 
 	request.body.pipe(outgoing);
 
@@ -120,13 +118,11 @@ export async function upgradeFetch(
 
 	let outgoing: ClientRequest;
 
-	if (remote.protocol === 'wss:') {
+	if (remote.protocol === 'wss:')
 		outgoing = httpsRequest({ ...options, agent: serverConfig.httpsAgent });
-	} else if (remote.protocol === 'ws:') {
+	else if (remote.protocol === 'ws:')
 		outgoing = httpRequest({ ...options, agent: serverConfig.httpAgent });
-	} else {
-		throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
-	}
+	else throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
 
 	outgoing.end();
 
