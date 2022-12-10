@@ -1,11 +1,15 @@
 import { Request, Response, writeResponse } from './AbstractMessage.js';
+import type CommonMeta from './Meta.js';
 import type { BareHeaders } from './requestUtil.js';
 import createHttpError from 'http-errors';
-import { EventEmitter } from 'node:events';
+import EventEmitter from 'node:events';
 import { readFileSync } from 'node:fs';
-import { Agent as HttpAgent } from 'node:http';
-import type { IncomingMessage, ServerResponse } from 'node:http';
-import { Agent as HttpsAgent } from 'node:https';
+import type {
+	Agent as HttpAgent,
+	IncomingMessage,
+	ServerResponse,
+} from 'node:http';
+import type { Agent as HttpsAgent } from 'node:https';
 import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
 
@@ -87,20 +91,13 @@ export type BareManifest = {
 	memoryUsage?: number;
 };
 
-export interface BareServerInit {
-	logErrors?: boolean;
-	localAddress?: string;
-	maintainer?: BareMaintainer;
-	httpAgent?: HttpAgent;
-	httpsAgent?: HttpsAgent;
-}
-
 export interface Options {
 	logErrors: boolean;
 	localAddress?: string;
 	maintainer?: BareMaintainer;
 	httpAgent: HttpAgent;
 	httpsAgent: HttpsAgent;
+	metaMap: Map<string, CommonMeta>;
 }
 
 export type RouteCallback = (
@@ -117,51 +114,32 @@ export type SocketRouteCallback = (
 ) => Promise<void> | void;
 
 export default class Server extends EventEmitter {
-	routes: Map<string, RouteCallback>;
-	socketRoutes: Map<string, SocketRouteCallback>;
+	routes = new Map<string, RouteCallback>();
+	socketRoutes = new Map<string, SocketRouteCallback>();
+	private closed = false;
 	private directory: string;
 	private options: Options;
 	/**
 	 * @internal
 	 */
-	constructor(directory: string, init: Partial<Options> = {}) {
+	constructor(directory: string, options: Options) {
 		super();
-
-		init.logErrors ??= false;
-		init.httpAgent ??= new HttpAgent({
-			keepAlive: true,
-			timeout: 12e3,
-		});
-		init.httpsAgent ??= new HttpsAgent({
-			keepAlive: true,
-			timeout: 12e3,
-		});
-
-		this.options = <Options>init;
-
-		this.routes = new Map();
-		this.socketRoutes = new Map();
-
-		if (typeof directory !== 'string') {
-			throw new Error('Directory must be specified.');
-		}
-
-		if (!directory.startsWith('/') || !directory.endsWith('/')) {
-			throw new RangeError('Directory must start and end with /');
-		}
-
 		this.directory = directory;
+		this.options = options;
 	}
 	/**
 	 * Remove all timers and listeners
 	 */
 	close() {
-		this.options.httpAgent.destroy();
-		this.options.httpsAgent.destroy();
+		this.closed = true;
 		this.emit('close');
 	}
 	shouldRoute(request: IncomingMessage): boolean {
-		return request.url !== undefined && request.url.startsWith(this.directory);
+		return (
+			!this.closed &&
+			request.url !== undefined &&
+			request.url.startsWith(this.directory)
+		);
 	}
 	get instanceInfo(): BareManifest {
 		return {

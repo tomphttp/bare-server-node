@@ -180,18 +180,9 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 	return new Response(response, { status: 200, headers: responseHeaders });
 };
 
-interface Meta {
-	response?: {
-		headers: BareHeaders;
-	};
-	set: number;
-}
-
-const tempMeta: Map<string, Meta> = new Map();
-
 const metaExpiration = 30e3;
 
-const wsMeta: RouteCallback = (request) => {
+const wsMeta: RouteCallback = (request, res, options) => {
 	if (request.method === 'OPTIONS') {
 		return new Response(undefined, { status: 200 });
 	}
@@ -206,28 +197,29 @@ const wsMeta: RouteCallback = (request) => {
 
 	const id = request.headers.get('x-bare-id')!;
 
-	if (!tempMeta.has(id)) {
+	const meta = options.metaMap.get(id);
+
+	// check if meta isn't undefined and if the version equals 1
+	if (meta?.value.v !== 1)
 		throw new BareError(400, {
 			code: 'INVALID_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
 			message: 'Unregistered ID',
 		});
-	}
 
-	const meta = tempMeta.get(id)!;
-
-	tempMeta.delete(id);
+	options.metaMap.delete(id);
 
 	return json(200, {
-		headers: meta.response?.headers,
+		headers: meta.value.response?.headers,
 	});
 };
 
-const wsNewMeta: RouteCallback = async () => {
+const wsNewMeta: RouteCallback = (request, res, options) => {
 	const id = randomHex(16);
 
-	tempMeta.set(id, {
-		set: Date.now(),
+	options.metaMap.set(id, {
+		value: { v: 1 },
+		expires: Date.now() + metaExpiration,
 	});
 
 	return new Response(Buffer.from(id));
@@ -304,12 +296,14 @@ const tunnelSocket: SocketRouteCallback = async (
 		remoteSocket.end();
 	});
 
-	if (tempMeta.has(id)) {
-		tempMeta.get(id)!.response = {
+	const meta = options.metaMap.get(id);
+	if (meta?.value.v === 1) {
+		meta.value.response = {
 			headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
 				...(<BareHeaders>remoteResponse.headers),
 			}),
 		};
+		options.metaMap.set(id, meta);
 	}
 
 	const responseHeaders = [
@@ -337,18 +331,4 @@ export default function registerV1(server: Server) {
 	server.routes.set('/v1/ws-new-meta', wsNewMeta);
 	server.routes.set('/v1/ws-meta', wsMeta);
 	server.socketRoutes.set('/v1/', tunnelSocket);
-
-	const interval = setInterval(() => {
-		for (const [id, meta] of tempMeta) {
-			const expires = meta.set + metaExpiration;
-
-			if (expires < Date.now()) {
-				tempMeta.delete(id);
-			}
-		}
-	}, 1e3);
-
-	server.once('close', () => {
-		clearInterval(interval);
-	});
 }

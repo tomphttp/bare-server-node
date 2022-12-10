@@ -310,19 +310,9 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 	});
 };
 
-interface Meta {
-	response?: { status: number; statusText: string; headers: BareHeaders };
-	set: number;
-	sendHeaders: BareHeaders;
-	remote: BareRemote;
-	forwardHeaders: string[];
-}
-
-const tempMeta: Map<string, Meta> = new Map();
-
 const metaExpiration = 30e3;
 
-const getMeta: RouteCallback = (request) => {
+const getMeta: RouteCallback = (request, res, options) => {
 	if (request.method === 'OPTIONS') {
 		return new Response(undefined, { status: 200 });
 	}
@@ -336,32 +326,32 @@ const getMeta: RouteCallback = (request) => {
 	}
 
 	const id = request.headers.get('x-bare-id')!;
+	const meta = options.metaMap.get(id);
 
-	if (!tempMeta.has(id)) {
+	if (meta?.value.v !== 2)
 		throw new BareError(400, {
 			code: 'INVALID_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
 			message: 'Unregistered ID',
 		});
-	}
 
-	const meta = tempMeta.get(id)!;
-
-	if (!meta.response) {
+	if (!meta.value.response)
 		throw new BareError(400, {
 			code: 'INVALID_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
 			message: 'Meta not ready',
 		});
-	}
 
-	tempMeta.delete(id);
+	options.metaMap.delete(id);
 
 	const responseHeaders = new Headers();
 
-	responseHeaders.set('x-bare-status', meta.response.status.toString());
-	responseHeaders.set('x-bare-status-text', meta.response.statusText);
-	responseHeaders.set('x-bare-headers', JSON.stringify(meta.response.headers));
+	responseHeaders.set('x-bare-status', meta.value.response.status.toString());
+	responseHeaders.set('x-bare-status-text', meta.value.response.statusText);
+	responseHeaders.set(
+		'x-bare-headers',
+		JSON.stringify(meta.value.response.headers)
+	);
 
 	return new Response(undefined, {
 		status: 200,
@@ -369,16 +359,19 @@ const getMeta: RouteCallback = (request) => {
 	});
 };
 
-const newMeta: RouteCallback = async (request) => {
+const newMeta: RouteCallback = async (request, res, options) => {
 	const { remote, sendHeaders, forwardHeaders } = readHeaders(request);
 
 	const id = randomHex(16);
 
-	tempMeta.set(id, {
-		set: Date.now(),
-		remote,
-		sendHeaders,
-		forwardHeaders,
+	options.metaMap.set(id, {
+		expires: Date.now() + metaExpiration,
+		value: {
+			v: 2,
+			remote,
+			sendHeaders,
+			forwardHeaders,
+		},
 	});
 
 	return new Response(Buffer.from(id));
@@ -406,21 +399,24 @@ const tunnelSocket: SocketRouteCallback = async (
 	}
 
 	const id = request.headers.get('sec-websocket-protocol')!;
+	const meta = options.metaMap.get(id);
 
-	if (!tempMeta.has(id)) {
+	if (meta?.value.v !== 2) {
 		socket.end();
 		return;
 	}
 
-	const meta = tempMeta.get(id)!;
-
-	loadForwardedHeaders(meta.forwardHeaders, meta.sendHeaders, request);
+	loadForwardedHeaders(
+		meta.value.forwardHeaders,
+		meta.value.sendHeaders,
+		request
+	);
 
 	const [remoteResponse, remoteSocket] = await upgradeFetch(
 		request,
 		abort.signal,
-		meta.sendHeaders,
-		meta.remote,
+		meta.value.sendHeaders,
+		meta.value.remote,
 		options
 	);
 
@@ -450,13 +446,15 @@ const tunnelSocket: SocketRouteCallback = async (
 
 	const remoteHeaders = new Headers(<HeadersInit>remoteResponse.headers);
 
-	meta.response = {
+	meta.value.response = {
 		headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
 			...(<BareHeaders>remoteResponse.headers),
 		}),
 		status: remoteResponse.statusCode!,
 		statusText: remoteResponse.statusMessage!,
 	};
+
+	options.metaMap.set(id, meta);
 
 	const responseHeaders = [
 		`HTTP/1.1 101 Switching Protocols`,
@@ -490,18 +488,4 @@ export default function registerV2(server: Server) {
 	server.routes.set('/v2/ws-new-meta', newMeta);
 	server.routes.set('/v2/ws-meta', getMeta);
 	server.socketRoutes.set('/v2/', tunnelSocket);
-
-	const interval = setInterval(() => {
-		for (const [id, meta] of tempMeta) {
-			const expires = meta.set + metaExpiration;
-
-			if (expires < Date.now()) {
-				tempMeta.delete(id);
-			}
-		}
-	}, 1e3);
-
-	server.once('close', () => {
-		clearInterval(interval);
-	});
 }
