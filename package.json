@@ -38,6 +38,7 @@
 		"build:watch": "tsc --watch"
 	},
 	"dependencies": {
+		"async-exit-hook": "^2.0.1",
 		"commander": "^9.4.1",
 		"dotenv": "^16.0.3",
 		"headers-polyfill": "3.0.9",
@@ -46,6 +47,7 @@
 	},
 	"devDependencies": {
 		"@ianvs/prettier-plugin-sort-imports": "^3.7.1",
+		"@types/async-exit-hook": "^2.0.0",
 		"@types/http-errors": "^2.0.1",
 		"@types/node": "^18.11.9",
 		"@types/source-map-support": "^0.5.6",

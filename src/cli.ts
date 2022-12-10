@@ -1,6 +1,7 @@
 import './sourceMap.js';
 import { pkg } from './BareServer.js';
 import createBareServer from './createServer.js';
+import exitHook from 'async-exit-hook';
 import { Command } from 'commander';
 import { config } from 'dotenv';
 import { readFile } from 'node:fs/promises';
@@ -101,12 +102,9 @@ program
 				port: port,
 			});
 
-			process.on('SIGINT', () => {
+			exitHook(() => {
 				bareServer.close();
 				server.close();
-				console.log('abc');
-				process.exit();
-				setTimeout(() => process.exit(), 1000);
 			});
 		}
 	);
