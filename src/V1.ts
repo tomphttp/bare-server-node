@@ -10,14 +10,10 @@ import {
 	rawHeaderNames,
 } from './headerUtil.js';
 import type { BareHeaders, BareRemote } from './requestUtil.js';
-import { fetch, upgradeFetch } from './requestUtil.js';
+import { fetch, upgradeFetch, randomHex } from './requestUtil.js';
 import { Headers } from 'headers-polyfill';
-import { randomBytes } from 'node:crypto';
-import { promisify } from 'node:util';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
-
-const randomBytesAsync = promisify(randomBytes);
 
 function loadForwardedHeaders(
 	forward: string[],
@@ -228,7 +224,7 @@ const wsMeta: RouteCallback = (request) => {
 };
 
 const wsNewMeta: RouteCallback = async () => {
-	const id = (await randomBytesAsync(32)).toString('hex');
+	const id = randomHex(16);
 
 	tempMeta.set(id, {
 		set: Date.now(),

@@ -1,6 +1,7 @@
 import type { Request } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
 import type { Options } from './BareServer.js';
+import { getRandomValues } from 'node:crypto';
 import type { ClientRequest, IncomingMessage } from 'node:http';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
@@ -14,6 +15,14 @@ export interface BareRemote {
 }
 
 export type BareHeaders = Record<string, string | string[]>;
+
+export function randomHex(byteLength: number) {
+	const bytes = new Uint8Array(byteLength);
+	getRandomValues(bytes);
+	let hex = '';
+	for (const byte of bytes) hex += byte.toString(16).padStart(2, '0');
+	return hex;
+}
 
 function outgoingError<T>(error: T): T | BareError {
 	if (error instanceof Error) {

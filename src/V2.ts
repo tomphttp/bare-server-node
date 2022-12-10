@@ -9,11 +9,9 @@ import {
 	rawHeaderNames,
 } from './headerUtil.js';
 import type { BareHeaders, BareRemote } from './requestUtil.js';
-import { fetch, upgradeFetch } from './requestUtil.js';
+import { fetch, upgradeFetch, randomHex } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
 import { Headers } from 'headers-polyfill';
-import { randomBytes } from 'node:crypto';
-import { promisify } from 'node:util';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 
@@ -63,8 +61,6 @@ const defaultCacheForwardHeaders: string[] = [
 const defaultCachePassHeaders: string[] = ['cache-control', 'etag'];
 
 const cacheNotModified = 304;
-
-const randomBytesAsync = promisify(randomBytes);
 
 function loadForwardedHeaders(
 	forward: string[],
@@ -376,7 +372,7 @@ const getMeta: RouteCallback = (request) => {
 const newMeta: RouteCallback = async (request) => {
 	const { remote, sendHeaders, forwardHeaders } = readHeaders(request);
 
-	const id = (await randomBytesAsync(32)).toString('hex');
+	const id = randomHex(16);
 
 	tempMeta.set(id, {
 		set: Date.now(),
