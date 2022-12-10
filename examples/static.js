@@ -10,14 +10,7 @@ import serveStatic from 'serve-static';
 const httpServer = createServer();
 
 // Run the Bare server in the /bare/ namespace. This will prevent conflicts between the static files and the bare server.
-const bareServer = createBareServer('/bare/', {
-	logErrors: false,
-	localAddress: undefined,
-	maintainer: {
-		email: 'tomphttp@sys32.dev',
-		website: 'https://github.com/tomphttp/',
-	},
-});
+const bareServer = createBareServer('/bare/');
 
 // The static root is usually relative to the main script in projects that use the Bare server.
 // ie. if static.js is at /src/static.js, public will be /public/

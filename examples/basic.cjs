@@ -4,14 +4,7 @@ const createBareServer = require('@tomphttp/bare-server-node');
 
 const httpServer = http.createServer();
 
-const bareServer = createBareServer('/', {
-	logErrors: false,
-	localAddress: undefined,
-	maintainer: {
-		email: 'tomphttp@sys32.dev',
-		website: 'https://github.com/tomphttp/',
-	},
-});
+const bareServer = createBareServer('/');
 
 httpServer.on('request', (req, res) => {
 	if (bareServer.shouldRoute(req)) {

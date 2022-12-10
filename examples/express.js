@@ -10,14 +10,7 @@ app.get('/', (req, res) => {
 	res.send('Hello, World!');
 });
 
-const bareServer = createBareServer('/bare/', {
-	logErrors: false,
-	localAddress: undefined,
-	maintainer: {
-		email: 'tomphttp@sys32.dev',
-		website: 'https://github.com/tomphttp/',
-	},
-});
+const bareServer = createBareServer('/bare/');
 
 httpServer.on('request', (req, res) => {
 	if (bareServer.shouldRoute(req)) {
