@@ -100,6 +100,14 @@ program
 				host: host,
 				port: port,
 			});
+
+			process.on('SIGINT', () => {
+				bareServer.close();
+				server.close();
+				console.log('abc');
+				process.exit();
+				setTimeout(() => process.exit(), 1000);
+			});
 		}
 	);
 
