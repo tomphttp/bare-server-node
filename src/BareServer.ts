@@ -198,11 +198,16 @@ export default class Server extends EventEmitter {
 				throw new createHttpError.NotFound();
 			}
 		} catch (error) {
-			if (this.options.logErrors) {
-				console.error(error);
-			}
+			if (this.options.logErrors) console.error(error);
 
-			if (error instanceof Error) {
+			if (createHttpError.isHttpError(error)) {
+				response = json(error.statusCode, {
+					code: 'UNKNOWN',
+					id: `error.${error.name}`,
+					message: error.message,
+					stack: error.stack,
+				});
+			} else if (error instanceof Error) {
 				response = json(500, {
 					code: 'UNKNOWN',
 					id: `error.${error.name}`,
