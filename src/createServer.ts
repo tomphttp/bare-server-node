@@ -1,6 +1,8 @@
 import BareServer from './BareServer.js';
 import type { BareMaintainer } from './BareServer.js';
-import type CommonMeta from './Meta.js';
+import type { Database } from './Meta.js';
+import { JSONDatabaseAdapter } from './Meta.js';
+import { cleanupDatabase } from './Meta.js';
 import registerV1 from './V1.js';
 import registerV2 from './V2.js';
 import { Agent as HttpAgent } from 'node:http';
@@ -12,7 +14,7 @@ interface BareServerInit {
 	maintainer?: BareMaintainer;
 	httpAgent?: HttpAgent;
 	httpsAgent?: HttpsAgent;
-	metaMap?: Map<string, CommonMeta>;
+	database?: Database;
 }
 
 /**
@@ -49,17 +51,19 @@ export = function createBareServer(
 		cleanup.push(() => httpsAgent.destroy());
 	}
 
-	if (!init.metaMap) {
-		const metaMap: Map<string, CommonMeta> = new Map();
-		const interval = setInterval(() => {
-			for (const [id, { expires }] of metaMap)
-				if (expires < Date.now()) metaMap.delete(id);
-		}, 1000);
-		init.metaMap = metaMap;
+	if (!init.database) {
+		const database = new Map<string, string>();
+		const interval = setInterval(() => cleanupDatabase(database), 1000);
+		init.database = database;
 		cleanup.push(() => clearInterval(interval));
 	}
 
-	const server = new BareServer(directory, <Required<BareServerInit>>init);
+	const server = new BareServer(directory, <
+		Required<BareServerInit> & { database: JSONDatabaseAdapter }
+	>{
+		...init,
+		database: new JSONDatabaseAdapter(init.database),
+	});
 	registerV1(server);
 	registerV2(server);
 

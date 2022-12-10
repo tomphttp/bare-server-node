@@ -182,7 +182,7 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 
 const metaExpiration = 30e3;
 
-const wsMeta: RouteCallback = (request, res, options) => {
+const wsMeta: RouteCallback = async (request, res, options) => {
 	if (request.method === 'OPTIONS') {
 		return new Response(undefined, { status: 200 });
 	}
@@ -196,8 +196,7 @@ const wsMeta: RouteCallback = (request, res, options) => {
 	}
 
 	const id = request.headers.get('x-bare-id')!;
-
-	const meta = options.metaMap.get(id);
+	const meta = await options.database.get(id);
 
 	// check if meta isn't undefined and if the version equals 1
 	if (meta?.value.v !== 1)
@@ -207,17 +206,17 @@ const wsMeta: RouteCallback = (request, res, options) => {
 			message: 'Unregistered ID',
 		});
 
-	options.metaMap.delete(id);
+	await options.database.delete(id);
 
 	return json(200, {
 		headers: meta.value.response?.headers,
 	});
 };
 
-const wsNewMeta: RouteCallback = (request, res, options) => {
+const wsNewMeta: RouteCallback = async (request, res, options) => {
 	const id = randomHex(16);
 
-	options.metaMap.set(id, {
+	await options.database.set(id, {
 		value: { v: 1 },
 		expires: Date.now() + metaExpiration,
 	});
@@ -296,14 +295,15 @@ const tunnelSocket: SocketRouteCallback = async (
 		remoteSocket.end();
 	});
 
-	const meta = options.metaMap.get(id);
+	const meta = await options.database.get(id);
+
 	if (meta?.value.v === 1) {
 		meta.value.response = {
 			headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
 				...(<BareHeaders>remoteResponse.headers),
 			}),
 		};
-		options.metaMap.set(id, meta);
+		await options.database.set(id, meta);
 	}
 
 	const responseHeaders = [

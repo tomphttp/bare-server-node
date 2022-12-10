@@ -312,7 +312,7 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 
 const metaExpiration = 30e3;
 
-const getMeta: RouteCallback = (request, res, options) => {
+const getMeta: RouteCallback = async (request, res, options) => {
 	if (request.method === 'OPTIONS') {
 		return new Response(undefined, { status: 200 });
 	}
@@ -326,7 +326,7 @@ const getMeta: RouteCallback = (request, res, options) => {
 	}
 
 	const id = request.headers.get('x-bare-id')!;
-	const meta = options.metaMap.get(id);
+	const meta = await options.database.get(id);
 
 	if (meta?.value.v !== 2)
 		throw new BareError(400, {
@@ -342,7 +342,7 @@ const getMeta: RouteCallback = (request, res, options) => {
 			message: 'Meta not ready',
 		});
 
-	options.metaMap.delete(id);
+	await options.database.delete(id);
 
 	const responseHeaders = new Headers();
 
@@ -364,7 +364,7 @@ const newMeta: RouteCallback = async (request, res, options) => {
 
 	const id = randomHex(16);
 
-	options.metaMap.set(id, {
+	await options.database.set(id, {
 		expires: Date.now() + metaExpiration,
 		value: {
 			v: 2,
@@ -399,7 +399,7 @@ const tunnelSocket: SocketRouteCallback = async (
 	}
 
 	const id = request.headers.get('sec-websocket-protocol')!;
-	const meta = options.metaMap.get(id);
+	const meta = await options.database.get(id);
 
 	if (meta?.value.v !== 2) {
 		socket.end();
@@ -454,7 +454,7 @@ const tunnelSocket: SocketRouteCallback = async (
 		statusText: remoteResponse.statusMessage!,
 	};
 
-	options.metaMap.set(id, meta);
+	await options.database.set(id, meta);
 
 	const responseHeaders = [
 		`HTTP/1.1 101 Switching Protocols`,

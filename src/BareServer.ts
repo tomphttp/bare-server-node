@@ -1,5 +1,5 @@
 import { Request, Response, writeResponse } from './AbstractMessage.js';
-import type CommonMeta from './Meta.js';
+import type { JSONDatabaseAdapter } from './Meta.js';
 import type { BareHeaders } from './requestUtil.js';
 import createHttpError from 'http-errors';
 import EventEmitter from 'node:events';
@@ -97,7 +97,7 @@ export interface Options {
 	maintainer?: BareMaintainer;
 	httpAgent: HttpAgent;
 	httpsAgent: HttpsAgent;
-	metaMap: Map<string, CommonMeta>;
+	database: JSONDatabaseAdapter;
 }
 
 export type RouteCallback = (
