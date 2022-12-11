@@ -32,10 +32,15 @@ program
 		'Address/network interface',
 		process.env.LOCAL_ADDRESS
 	)
-	.option(
-		'-f, --family <4|6>',
-		'IP address family used when looking up host/hostnames.',
-		process.env.IP_FAMILY
+	.option<number>(
+		'-f, --family <0|4|6>',
+		'IP address family used when looking up host/hostnames. Default is 0',
+		(val: string) => {
+			const valN = Number(val);
+			if (isNaN(valN)) throw new Error('Bad family');
+			return valN;
+		},
+		process.env.IP_FAMILY ? Number(process.env.IP_FAMILY) : 0
 	)
 	.option(
 		'-m, --maintainer <{email?:string,website?:string}>',

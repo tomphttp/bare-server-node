@@ -11,6 +11,7 @@ import { Agent as HttpsAgent } from 'node:https';
 interface BareServerInit {
 	logErrors?: boolean;
 	localAddress?: string;
+	family?: number;
 	maintainer?: BareMaintainer;
 	httpAgent?: HttpAgent;
 	httpsAgent?: HttpsAgent;
@@ -32,6 +33,13 @@ export = function createBareServer(
 	init.logErrors ??= false;
 
 	const cleanup: (() => void)[] = [];
+
+	if (init.family) {
+		if (![0, 4, 6].includes(init.family))
+			throw new RangeError('init.family must be one of: 0, 4, 6');
+	}
+
+	console.log(init.family);
 
 	if (!init.httpAgent) {
 		const httpAgent = new HttpAgent({
