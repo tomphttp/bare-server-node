@@ -39,8 +39,6 @@ export = function createBareServer(
 			throw new RangeError('init.family must be one of: 0, 4, 6');
 	}
 
-	console.log(init.family);
-
 	if (!init.httpAgent) {
 		const httpAgent = new HttpAgent({
 			keepAlive: true,
