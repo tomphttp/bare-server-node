@@ -33,6 +33,11 @@ program
 		process.env.LOCAL_ADDRESS
 	)
 	.option(
+		'-f, --family <4|6>',
+		'IP address family used when looking up host/hostnames.',
+		process.env.IP_FAMILY
+	)
+	.option(
 		'-m, --maintainer <{email?:string,website?:string}>',
 		'Inline maintainer data'
 	)
@@ -47,6 +52,7 @@ program
 			host,
 			port,
 			localAddress,
+			family,
 			maintainer,
 			maintainerFile,
 		}: {
@@ -55,12 +61,14 @@ program
 			host: string;
 			port: number;
 			localAddress?: string;
+			family?: number;
 			maintainer?: string;
 			maintainerFile?: string;
 		}) => {
 			const config = {
 				logErrors: errors,
 				localAddress,
+				family,
 				maintainer: maintainer
 					? JSON.parse(maintainer)
 					: maintainerFile

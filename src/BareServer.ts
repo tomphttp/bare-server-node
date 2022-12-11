@@ -94,6 +94,10 @@ export type BareManifest = {
 export interface Options {
 	logErrors: boolean;
 	localAddress?: string;
+	/**
+	 * IP address family to use when resolving `host` or `hostname`. Valid values are `4` or `6`. When unspecified, both IP v4 and v6 will be used.
+	 */
+	family?: number;
 	maintainer?: BareMaintainer;
 	httpAgent: HttpAgent;
 	httpsAgent: HttpsAgent;

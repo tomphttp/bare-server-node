@@ -72,6 +72,7 @@ export async function fetch(
 		headers: requestHeaders,
 		setHost: false,
 		localAddress: options.localAddress,
+		family: options.family,
 		signal,
 	};
 
@@ -122,6 +123,7 @@ export async function upgradeFetch(
 		method: request.method,
 		setHost: false,
 		localAddress: options.localAddress,
+		family: options.family,
 		signal,
 	};
 
