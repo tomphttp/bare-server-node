@@ -23,9 +23,6 @@ export class Request {
 		this.headers = new Headers(init.headers);
 		this.url = new URL(`http:${this.headers.get('host')}${init.path}`);
 	}
-	get query() {
-		return this.url.searchParams;
-	}
 }
 
 export type ResponseBody = Buffer | IncomingMessage;
