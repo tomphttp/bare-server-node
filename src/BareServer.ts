@@ -1,7 +1,8 @@
 import { Request, Response, writeResponse } from './AbstractMessage.js';
 import type { JSONDatabaseAdapter } from './Meta.js';
-import type { BareHeaders } from './requestUtil.js';
+import type { BareHeaders, BareRemote } from './requestUtil.js';
 import createHttpError from 'http-errors';
+import type { LookupOneOptions } from 'node:dns';
 import EventEmitter from 'node:events';
 import { readFileSync } from 'node:fs';
 import type {
@@ -93,10 +94,28 @@ export type BareManifest = {
 
 export interface Options {
 	logErrors: boolean;
-	localAddress?: string;
 	/**
-	 * IP address family to use when resolving `host` or `hostname`. Valid values are `4` or `6`. When unspecified, both IP v4 and v6 will be used.
+	 * Callback for filtering the remote URL.
+	 * @param remote
+	 * @returns Nothing
+	 * @throws An error if the remote is bad.
 	 */
+	filterRemote?: (remote: BareRemote) => Promise<void> | void;
+	/**
+	 * DNS lookup
+	 * May not get called when remote.host is an IP
+	 * Use in combination with filterRemote to block IPs
+	 */
+	lookup: (
+		hostname: string,
+		options: LookupOneOptions,
+		callback: (
+			err: NodeJS.ErrnoException | null,
+			address: string,
+			family: number
+		) => void
+	) => void;
+	localAddress?: string;
 	family?: number;
 	maintainer?: BareMaintainer;
 	httpAgent: HttpAgent;

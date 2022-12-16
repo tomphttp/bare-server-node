@@ -1,22 +1,32 @@
 import BareServer from './BareServer.js';
-import type { BareMaintainer } from './BareServer.js';
+import type { Options, BareMaintainer } from './BareServer.js';
 import type { Database } from './Meta.js';
 import { JSONDatabaseAdapter } from './Meta.js';
 import { cleanupDatabase } from './Meta.js';
 import registerV1 from './V1.js';
 import registerV2 from './V2.js';
+import type { BareRemote } from './requestUtil.js';
+import { isValid, parse } from 'ipaddr.js';
+import { lookup } from 'node:dns';
 import { Agent as HttpAgent } from 'node:http';
 import { Agent as HttpsAgent } from 'node:https';
 
 interface BareServerInit {
 	logErrors?: boolean;
 	localAddress?: string;
+	filterRemote?: Options['filterRemote'];
+	lookup?: Options['lookup'];
+	/**
+	 * IP address family to use when resolving `host` or `hostname`. Valid values are `4` or `6`. When unspecified, both IP v4 and v6 will be used.
+	 */
 	family?: number;
 	maintainer?: BareMaintainer;
 	httpAgent?: HttpAgent;
 	httpsAgent?: HttpsAgent;
 	database?: Database;
 }
+
+const validIPFamily: number[] = [0, 4, 6];
 
 /**
  * Create a Bare server.
@@ -34,15 +44,24 @@ export = function createBareServer(
 
 	const cleanup: (() => void)[] = [];
 
-	if (init.family) {
-		if (![0, 4, 6].includes(init.family))
-			throw new RangeError('init.family must be one of: 0, 4, 6');
-	}
+	if (typeof init.family === 'number' && !validIPFamily.includes(init.family))
+		throw new RangeError('init.family must be one of: 0, 4, 6');
+
+	init.filterRemote ??= (remote: BareRemote) => {
+		if (isValid(remote.host) && parse(remote.host).range() !== 'unicast')
+			throw new RangeError('Forbidden IP');
+	};
+
+	init.lookup ??= (hostname, options, callback) =>
+		lookup(hostname, options, (err, address, family) => {
+			if (address && parse(address).range() !== 'unicast')
+				callback(new RangeError('Forbidden IP'), '', -1);
+			else callback(err, address, family);
+		});
 
 	if (!init.httpAgent) {
 		const httpAgent = new HttpAgent({
 			keepAlive: true,
-			timeout: 12e3,
 		});
 		init.httpAgent = httpAgent;
 		cleanup.push(() => httpAgent.destroy());
@@ -51,7 +70,6 @@ export = function createBareServer(
 	if (!init.httpsAgent) {
 		const httpsAgent = new HttpsAgent({
 			keepAlive: true,
-			timeout: 12e3,
 		});
 		init.httpsAgent = httpsAgent;
 		cleanup.push(() => httpsAgent.destroy());
@@ -64,10 +82,8 @@ export = function createBareServer(
 		cleanup.push(() => clearInterval(interval));
 	}
 
-	const server = new BareServer(directory, <
-		Required<BareServerInit> & { database: JSONDatabaseAdapter }
-	>{
-		...init,
+	const server = new BareServer(directory, {
+		...(init as Required<BareServerInit>),
 		database: new JSONDatabaseAdapter(init.database),
 	});
 	registerV1(server);

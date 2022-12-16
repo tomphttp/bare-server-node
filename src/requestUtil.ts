@@ -61,34 +61,37 @@ export async function fetch(
 	request: Request,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
-	url: BareRemote,
+	remote: BareRemote,
 	options: Options
 ): Promise<IncomingMessage> {
+	if (options.filterRemote) await options.filterRemote(remote);
+
 	const req: RequestOptions = {
-		host: url.host,
-		port: url.port,
-		path: url.path,
+		host: remote.host,
+		port: remote.port,
+		path: remote.path,
 		method: request.method,
 		headers: requestHeaders,
 		setHost: false,
+		signal,
 		localAddress: options.localAddress,
 		family: options.family,
-		signal,
+		lookup: options.lookup,
 	};
 
 	let outgoing: ClientRequest;
 
-	if (url.protocol === 'https:')
+	if (remote.protocol === 'https:')
 		outgoing = httpsRequest({
 			...req,
 			agent: options.httpsAgent,
 		});
-	else if (url.protocol === 'http:')
+	else if (remote.protocol === 'http:')
 		outgoing = httpRequest({
 			...req,
 			agent: options.httpAgent,
 		});
-	else throw new RangeError(`Unsupported protocol: '${url.protocol}'`);
+	else throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
 
 	request.body.pipe(outgoing);
 
@@ -115,16 +118,20 @@ export async function upgradeFetch(
 	remote: BareRemote,
 	options: Options
 ): Promise<[res: IncomingMessage, socket: Duplex, head: Buffer]> {
+	if (options.filterRemote) await options.filterRemote(remote);
+
 	const req: RequestOptions = {
 		host: remote.host,
 		port: remote.port,
 		path: remote.path,
 		headers: requestHeaders,
 		method: request.method,
+		timeout: 12e3,
 		setHost: false,
+		signal,
 		localAddress: options.localAddress,
 		family: options.family,
-		signal,
+		lookup: options.lookup,
 	};
 
 	let outgoing: ClientRequest;
@@ -139,7 +146,7 @@ export async function upgradeFetch(
 
 	return await new Promise((resolve, reject) => {
 		outgoing.on('response', (res) => {
-			reject('Remote did not upgrade the WebSocket');
+			reject(new Error('Remote did not upgrade the WebSocket'));
 			res.destroy();
 		});
 
