@@ -76,19 +76,40 @@ function readHeaders(request: Request): BareHeaderData {
 
 	if (request.headers.has('x-bare-headers')) {
 		try {
-			const json = JSON.parse(request.headers.get('x-bare-headers')!);
+			const json = JSON.parse(request.headers.get('x-bare-headers')!) as Record<
+				string,
+				string | string[]
+			>;
 
 			for (const header in json) {
-				if (typeof json[header] !== 'string' && !Array.isArray(json[header])) {
+				const value = json[header];
+
+				if (typeof value === 'string') {
+					headers[header] = value;
+				} else if (Array.isArray(value)) {
+					const array: string[] = [];
+
+					for (const val of value) {
+						if (typeof val !== 'string') {
+							throw new BareError(400, {
+								code: 'INVALID_BARE_HEADER',
+								id: `bare.headers.${header}`,
+								message: `Header was not a String.`,
+							});
+						}
+
+						array.push(val);
+					}
+
+					headers[header] = array;
+				} else {
 					throw new BareError(400, {
 						code: 'INVALID_BARE_HEADER',
 						id: `bare.headers.${header}`,
-						message: `Header was not a String or Array.`,
+						message: `Header was not a String.`,
 					});
 				}
 			}
-
-			Object.assign(headers, json);
 		} catch (error) {
 			if (error instanceof SyntaxError) {
 				throw new BareError(400, {
