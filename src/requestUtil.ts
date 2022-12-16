@@ -2,7 +2,7 @@ import type { Request } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
 import type { Options } from './BareServer.js';
 import { getRandomValues } from 'node:crypto';
-import type { ClientRequest, IncomingMessage } from 'node:http';
+import type { ClientRequest, IncomingMessage, RequestOptions } from 'node:http';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import type { Duplex } from 'node:stream';
@@ -64,7 +64,7 @@ export async function fetch(
 	url: BareRemote,
 	options: Options
 ): Promise<IncomingMessage> {
-	const req = {
+	const req: RequestOptions = {
 		host: url.host,
 		port: url.port,
 		path: url.path,
@@ -115,7 +115,7 @@ export async function upgradeFetch(
 	remote: BareRemote,
 	options: Options
 ): Promise<[res: IncomingMessage, socket: Duplex, head: Buffer]> {
-	const req = {
+	const req: RequestOptions = {
 		host: remote.host,
 		port: remote.port,
 		path: remote.path,
