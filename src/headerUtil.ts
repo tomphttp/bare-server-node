@@ -8,14 +8,10 @@ export function objectFromRawHeaders(raw: string[]): BareHeaders {
 	for (let i = 0; i < raw.length; i += 2) {
 		const [header, value] = raw.slice(i, i + 2);
 		if (header in result) {
-			if (result[header] instanceof Array) {
-				(<string[]>result[header]).push(value);
-			} else {
-				result[header] = [<string>result[header], value];
-			}
-		} else {
-			result[header] = value;
-		}
+			const v = result[header];
+			if (Array.isArray(v)) v.push(value);
+			else result[header] = [v, value];
+		} else result[header] = value;
 	}
 
 	return result;
