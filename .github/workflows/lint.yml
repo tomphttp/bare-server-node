@@ -13,7 +13,6 @@ on:
 jobs:
   run-linters:
     name: Run linters
-    runs-on: self-hosted
 
     steps:
       - name: Checkout
