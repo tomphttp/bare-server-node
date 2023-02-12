@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 import BareServer from './BareServer.js';
 import type { Options, BareMaintainer } from './BareServer.js';
 import type { Database } from './Meta.js';
@@ -11,30 +12,45 @@ import { lookup } from 'node:dns';
 import { Agent as HttpAgent } from 'node:http';
 import { Agent as HttpsAgent } from 'node:https';
 
-interface BareServerInit {
-	logErrors?: boolean;
-	localAddress?: string;
-	filterRemote?: Options['filterRemote'];
-	lookup?: Options['lookup'];
-	/**
-	 * IP address family to use when resolving `host` or `hostname`. Valid values are `4` or `6`. When unspecified, both IP v4 and v6 will be used.
-	 */
-	family?: number;
-	maintainer?: BareMaintainer;
-	httpAgent?: HttpAgent;
-	httpsAgent?: HttpsAgent;
-	database?: Database;
-}
-
 const validIPFamily: number[] = [0, 4, 6];
+
+declare namespace createBareServer {
+	type IPFamily = 0 | 4 | 6;
+
+	interface BareServerInit {
+		logErrors?: boolean;
+		localAddress?: string;
+		/**
+		 * When set, the default logic for blocking local IP addresses is disabled.
+		 */
+		filterRemote?: Options['filterRemote'];
+		/**
+		 * When set, the default logic for blocking local IP addresses is disabled.
+		 */
+		lookup?: Options['lookup'];
+		/**
+		 * If local IP addresses/DNS records should be blocked.
+		 * @default true
+		 */
+		blockLocal?: boolean;
+		/**
+		 * IP address family to use when resolving `host` or `hostname`. Valid values are `0`, `4`, and `6`. When unspecified/0, both IP v4 and v6 will be used.
+		 */
+		family?: IPFamily | number;
+		maintainer?: BareMaintainer;
+		httpAgent?: HttpAgent;
+		httpsAgent?: HttpsAgent;
+		database?: Database;
+	}
+}
 
 /**
  * Create a Bare server.
  * This will handle all lifecycles for unspecified options (httpAgent, httpsAgent, metaMap).
  */
-export = function createBareServer(
+function createBareServer(
 	directory: string,
-	init: BareServerInit = {}
+	init: createBareServer.BareServerInit = {}
 ) {
 	if (typeof directory !== 'string')
 		throw new Error('Directory must be specified.');
@@ -47,17 +63,19 @@ export = function createBareServer(
 	if (typeof init.family === 'number' && !validIPFamily.includes(init.family))
 		throw new RangeError('init.family must be one of: 0, 4, 6');
 
-	init.filterRemote ??= (remote: BareRemote) => {
-		if (isValid(remote.host) && parse(remote.host).range() !== 'unicast')
-			throw new RangeError('Forbidden IP');
-	};
+	if (init.blockLocal ?? true) {
+		init.filterRemote ??= (remote: BareRemote) => {
+			if (isValid(remote.host) && parse(remote.host).range() !== 'unicast')
+				throw new RangeError('Forbidden IP');
+		};
 
-	init.lookup ??= (hostname, options, callback) =>
-		lookup(hostname, options, (err, address, family) => {
-			if (address && parse(address).range() !== 'unicast')
-				callback(new RangeError('Forbidden IP'), '', -1);
-			else callback(err, address, family);
-		});
+		init.lookup ??= (hostname, options, callback) =>
+			lookup(hostname, options, (err, address, family) => {
+				if (address && parse(address).range() !== 'unicast')
+					callback(new RangeError('Forbidden IP'), '', -1);
+				else callback(err, address, family);
+			});
+	}
 
 	if (!init.httpAgent) {
 		const httpAgent = new HttpAgent({
@@ -83,7 +101,7 @@ export = function createBareServer(
 	}
 
 	const server = new BareServer(directory, {
-		...(init as Required<BareServerInit>),
+		...(init as Required<createBareServer.BareServerInit>),
 		database: new JSONDatabaseAdapter(init.database),
 	});
 	registerV1(server);
@@ -94,4 +112,6 @@ export = function createBareServer(
 	});
 
 	return server;
-};
+}
+
+export = createBareServer;

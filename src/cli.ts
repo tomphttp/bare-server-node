@@ -43,6 +43,10 @@ program
 		process.env.IP_FAMILY ? Number(process.env.IP_FAMILY) : 0
 	)
 	.option(
+		'-nbl, --no-block-local',
+		'When set, local IP addresses/DNS records are NOT blocked.'
+	)
+	.option(
 		'-m, --maintainer <{email?:string,website?:string}>',
 		'Inline maintainer data'
 	)
@@ -60,6 +64,7 @@ program
 			family,
 			maintainer,
 			maintainerFile,
+			blockLocal,
 		}: {
 			directory: string;
 			errors: boolean;
@@ -69,11 +74,13 @@ program
 			family?: number;
 			maintainer?: string;
 			maintainerFile?: string;
+			blockLocal?: boolean;
 		}) => {
-			const config = {
+			const config: createBareServer.BareServerInit = {
 				logErrors: errors,
 				localAddress,
-				family,
+				family: family as createBareServer.IPFamily,
+				blockLocal,
 				maintainer: maintainer
 					? JSON.parse(maintainer)
 					: maintainerFile
