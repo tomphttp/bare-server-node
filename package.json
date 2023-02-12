@@ -35,7 +35,7 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"build:watch": "tsc --watch"
+		"dev": "tsc --watch"
 	},
 	"dependencies": {
 		"async-exit-hook": "^2.0.1",
