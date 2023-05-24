@@ -44,6 +44,25 @@ declare namespace createBareServer {
 	}
 }
 
+interface Address {
+	address: string;
+	family: number;
+}
+
+/**
+ * Converts the address and family of a DNS lookup callback into an array if it wasn't already
+ */
+function toAddressArray(address: string | Address[], family?: number) {
+	if (typeof address === 'string')
+		return [
+			{
+				address,
+				family,
+			},
+		] as Address[];
+	else return address;
+}
+
 /**
  * Create a Bare server.
  * This will handle all lifecycles for unspecified options (httpAgent, httpsAgent, metaMap).
@@ -71,7 +90,12 @@ function createBareServer(
 
 		init.lookup ??= (hostname, options, callback) =>
 			lookup(hostname, options, (err, address, family) => {
-				if (address && parse(address).range() !== 'unicast')
+				if (
+					address &&
+					toAddressArray(address, family).some(
+						({ address }) => parse(address).range() !== 'unicast'
+					)
+				)
 					callback(new RangeError('Forbidden IP'), '', -1);
 				else callback(err, address, family);
 			});
