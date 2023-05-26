@@ -26,7 +26,9 @@
 	"engines": {
 		"node": ">=18.0.0"
 	},
-	"bin": "bin.js",
+	"bin": {
+		"bare-server-node": "bin.js"
+	},
 	"main": "dist/createServer.js",
 	"types": "dist/createServer.d.ts",
 	"files": [
