@@ -10,6 +10,7 @@ import { cleanupDatabase, JSONDatabaseAdapter } from './Meta.js';
 import type { BareRemote } from './requestUtil.js';
 import registerV1 from './V1.js';
 import registerV2 from './V2.js';
+import registerV3 from './V3.js';
 
 const validIPFamily: number[] = [0, 4, 6];
 
@@ -129,6 +130,7 @@ function createBareServer(
 	});
 	registerV1(server);
 	registerV2(server);
+	registerV3(server);
 
 	server.once('close', () => {
 		for (const cb of cleanup) cb();

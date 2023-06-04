@@ -166,7 +166,7 @@ export default class Server extends EventEmitter {
 	}
 	get instanceInfo(): BareManifest {
 		return {
-			versions: ['v1', 'v2'],
+			versions: ['v1', 'v2', 'v3'],
 			language: 'NodeJS',
 			memoryUsage:
 				Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
