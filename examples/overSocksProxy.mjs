@@ -1,6 +1,6 @@
-import createBareServer from '../dist/createServer.js';
 import http from 'node:http';
 import { SocksProxyAgent } from 'socks-proxy-agent';
+import createBareServer from '../dist/createServer.js';
 
 const socksProxyAgent = new SocksProxyAgent(
 	'socks://your-name@gmail.com:abcdef12345124@br41.nordvpn.com'

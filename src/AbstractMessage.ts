@@ -1,7 +1,7 @@
-import type { BareHeaders } from './requestUtil.js';
-import { Headers } from 'headers-polyfill';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Stream } from 'node:stream';
+import { Headers } from 'headers-polyfill';
+import type { BareHeaders } from './requestUtil.js';
 
 export interface RequestInit {
 	method: string;

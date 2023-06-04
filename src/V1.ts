@@ -1,3 +1,4 @@
+import { Headers } from 'headers-polyfill';
 import type { Request } from './AbstractMessage.js';
 import { Response } from './AbstractMessage.js';
 import type { RouteCallback, SocketRouteCallback } from './BareServer.js';
@@ -10,8 +11,7 @@ import {
 	rawHeaderNames,
 } from './headerUtil.js';
 import type { BareHeaders, BareRemote } from './requestUtil.js';
-import { fetch, upgradeFetch, randomHex } from './requestUtil.js';
-import { Headers } from 'headers-polyfill';
+import { fetch, randomHex, upgradeFetch } from './requestUtil.js';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 

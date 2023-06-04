@@ -1,16 +1,15 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-import BareServer from './BareServer.js';
-import type { Options, BareMaintainer } from './BareServer.js';
-import type { Database } from './Meta.js';
-import { JSONDatabaseAdapter } from './Meta.js';
-import { cleanupDatabase } from './Meta.js';
-import registerV1 from './V1.js';
-import registerV2 from './V2.js';
-import type { BareRemote } from './requestUtil.js';
-import { isValid, parse } from 'ipaddr.js';
 import { lookup } from 'node:dns';
 import { Agent as HttpAgent } from 'node:http';
 import { Agent as HttpsAgent } from 'node:https';
+import { isValid, parse } from 'ipaddr.js';
+import BareServer from './BareServer.js';
+import type { BareMaintainer, Options } from './BareServer.js';
+import type { Database } from './Meta.js';
+import { cleanupDatabase, JSONDatabaseAdapter } from './Meta.js';
+import type { BareRemote } from './requestUtil.js';
+import registerV1 from './V1.js';
+import registerV2 from './V2.js';
 
 const validIPFamily: number[] = [0, 4, 6];
 

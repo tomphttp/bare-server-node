@@ -1,11 +1,11 @@
 import './sourceMap.js';
-import { pkg } from './BareServer.js';
-import createBareServer from './createServer.js';
+import { readFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import exitHook from 'async-exit-hook';
 import { Command } from 'commander';
 import { config } from 'dotenv';
-import { readFile } from 'node:fs/promises';
-import { createServer } from 'node:http';
+import { pkg } from './BareServer.js';
+import createBareServer from './createServer.js';
 
 config();
 

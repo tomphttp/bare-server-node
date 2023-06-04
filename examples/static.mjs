@@ -2,9 +2,9 @@
  * Example of serving static files and running a bare server.
  * This is a very common setup.
  */
-import createBareServer from '@tomphttp/bare-server-node';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
+import createBareServer from '@tomphttp/bare-server-node';
 import serveStatic from 'serve-static';
 
 const httpServer = createServer();

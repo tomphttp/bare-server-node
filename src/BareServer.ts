@@ -1,7 +1,3 @@
-import { Request, Response, writeResponse } from './AbstractMessage.js';
-import type { JSONDatabaseAdapter } from './Meta.js';
-import type { BareHeaders, BareRemote } from './requestUtil.js';
-import createHttpError from 'http-errors';
 import type { LookupOneOptions } from 'node:dns';
 import EventEmitter from 'node:events';
 import { readFileSync } from 'node:fs';
@@ -13,6 +9,10 @@ import type {
 import type { Agent as HttpsAgent } from 'node:https';
 import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
+import createHttpError from 'http-errors';
+import { Request, Response, writeResponse } from './AbstractMessage.js';
+import type { JSONDatabaseAdapter } from './Meta.js';
+import type { BareHeaders, BareRemote } from './requestUtil.js';
 
 export interface BareErrorBody {
 	code: string;
