@@ -22,9 +22,8 @@ function loadForwardedHeaders(
 	request: Request
 ) {
 	for (const header of forward) {
-		if (request.headers.has(header)) {
-			target[header] = request.headers.get(header)!;
-		}
+		const value = request.headers.get(header);
+		if (value !== null) target[header] = value;
 	}
 }
 
@@ -34,127 +33,120 @@ interface BareHeaderData {
 }
 
 function readHeaders(request: Request): BareHeaderData {
-	const remote: Partial<BareRemote> & { [key: string]: string | number } = {};
-	const headers: BareHeaders = {};
-	Reflect.setPrototypeOf(headers, null);
+	const remote: Partial<BareRemote> & { [key: string]: string | number } =
+		Object.create(null);
+	const headers: BareHeaders = Object.create(null);
 
 	for (const remoteProp of ['host', 'port', 'protocol', 'path']) {
 		const header = `x-bare-${remoteProp}`;
+		const value = request.headers.get(header)!;
 
-		if (request.headers.has(header)) {
-			const value = request.headers.get(header)!;
-
-			switch (remoteProp) {
-				case 'port':
-					if (isNaN(parseInt(value))) {
-						throw new BareError(400, {
-							code: 'INVALID_BARE_HEADER',
-							id: `request.headers.${header}`,
-							message: `Header was not a valid integer.`,
-						});
-					}
-					break;
-				case 'protocol':
-					if (!validProtocols.includes(value)) {
-						throw new BareError(400, {
-							code: 'INVALID_BARE_HEADER',
-							id: `request.headers.${header}`,
-							message: `Header was invalid`,
-						});
-					}
-					break;
-			}
-
-			remote[remoteProp] = value;
-		} else {
+		if (value === null)
 			throw new BareError(400, {
 				code: 'MISSING_BARE_HEADER',
 				id: `request.headers.${header}`,
 				message: `Header was not specified.`,
 			});
-		}
-	}
 
-	if (request.headers.has('x-bare-headers')) {
-		try {
-			const json = JSON.parse(request.headers.get('x-bare-headers')!) as Record<
-				string,
-				string | string[]
-			>;
-
-			for (const header in json) {
-				const value = json[header];
-
-				if (typeof value === 'string') {
-					headers[header] = value;
-				} else if (Array.isArray(value)) {
-					const array: string[] = [];
-
-					for (const val of value) {
-						if (typeof val !== 'string') {
-							throw new BareError(400, {
-								code: 'INVALID_BARE_HEADER',
-								id: `bare.headers.${header}`,
-								message: `Header was not a String.`,
-							});
-						}
-
-						array.push(val);
-					}
-
-					headers[header] = array;
-				} else {
+		switch (remoteProp) {
+			case 'port':
+				if (isNaN(parseInt(value))) {
 					throw new BareError(400, {
 						code: 'INVALID_BARE_HEADER',
-						id: `bare.headers.${header}`,
-						message: `Header was not a String.`,
+						id: `request.headers.${header}`,
+						message: `Header was not a valid integer.`,
 					});
 				}
-			}
-		} catch (error) {
-			if (error instanceof SyntaxError) {
-				throw new BareError(400, {
-					code: 'INVALID_BARE_HEADER',
-					id: `request.headers.x-bare-headers`,
-					message: `Header contained invalid JSON. (${error.message})`,
-				});
-			} else {
-				throw error;
-			}
+				break;
+			case 'protocol':
+				if (!validProtocols.includes(value)) {
+					throw new BareError(400, {
+						code: 'INVALID_BARE_HEADER',
+						id: `request.headers.${header}`,
+						message: `Header was invalid`,
+					});
+				}
+				break;
 		}
-	} else {
+
+		remote[remoteProp] = value;
+	}
+
+	const xBareHeaders = request.headers.get('x-bare-headers');
+
+	if (xBareHeaders === null)
 		throw new BareError(400, {
 			code: 'MISSING_BARE_HEADER',
 			id: `request.headers.x-bare-headers`,
 			message: `Header was not specified.`,
 		});
-	}
 
-	if (request.headers.has('x-bare-forward-headers')) {
-		let json;
+	try {
+		const json = JSON.parse(xBareHeaders) as Record<string, string | string[]>;
 
-		try {
-			json = JSON.parse(request.headers.get('x-bare-forward-headers')!);
-		} catch (error) {
+		for (const header in json) {
+			const value = json[header];
+
+			if (typeof value === 'string') {
+				headers[header] = value;
+			} else if (Array.isArray(value)) {
+				const array: string[] = [];
+
+				for (const val of value) {
+					if (typeof val !== 'string') {
+						throw new BareError(400, {
+							code: 'INVALID_BARE_HEADER',
+							id: `bare.headers.${header}`,
+							message: `Header was not a String.`,
+						});
+					}
+
+					array.push(val);
+				}
+
+				headers[header] = array;
+			} else {
+				throw new BareError(400, {
+					code: 'INVALID_BARE_HEADER',
+					id: `bare.headers.${header}`,
+					message: `Header was not a String.`,
+				});
+			}
+		}
+	} catch (error) {
+		if (error instanceof SyntaxError) {
 			throw new BareError(400, {
 				code: 'INVALID_BARE_HEADER',
-				id: `request.headers.x-bare-forward-headers`,
-				message: `Header contained invalid JSON. (${
-					error instanceof Error ? error.message : error
-				})`,
+				id: `request.headers.x-bare-headers`,
+				message: `Header contained invalid JSON. (${error.message})`,
 			});
+		} else {
+			throw error;
 		}
+	}
 
-		loadForwardedHeaders(json, headers, request);
-	} else {
+	const xBareForwardHeaders = request.headers.get('x-bare-forward-headers');
+
+	if (xBareForwardHeaders === null)
 		throw new BareError(400, {
 			code: 'MISSING_BARE_HEADER',
 			id: `request.headers.x-bare-forward-headers`,
 			message: `Header was not specified.`,
 		});
+
+	try {
+		loadForwardedHeaders(JSON.parse(xBareForwardHeaders), headers, request);
+	} catch (error) {
+		throw new BareError(400, {
+			code: 'INVALID_BARE_HEADER',
+			id: `request.headers.x-bare-forward-headers`,
+			message: `Header contained invalid JSON. (${
+				error instanceof Error ? error.message : error
+			})`,
+		});
 	}
 
-	return { remote: <BareRemote>remote, headers };
+	return { remote: remote as BareRemote, headers };
 }
 
 const tunnelRequest: RouteCallback = async (request, res, options) => {
@@ -209,15 +201,15 @@ const wsMeta: RouteCallback = async (request, res, options) => {
 		return new Response(undefined, { status: 200 });
 	}
 
-	if (!request.headers.has('x-bare-id')) {
+	const id = request.headers.get('x-bare-id');
+
+	if (id === null)
 		throw new BareError(400, {
 			code: 'MISSING_BARE_HEADER',
 			id: 'request.headers.x-bare-id',
 			message: 'Header was not specified',
 		});
-	}
 
-	const id = request.headers.get('x-bare-id')!;
 	const meta = await options.database.get(id);
 
 	// check if meta isn't undefined and if the version equals 1

@@ -1,9 +1,7 @@
 import type { BareHeaders } from './requestUtil.js';
 
 export function objectFromRawHeaders(raw: string[]): BareHeaders {
-	const result: BareHeaders = {};
-
-	Reflect.setPrototypeOf(result, null);
+	const result: BareHeaders = Object.create(null);
 
 	for (let i = 0; i < raw.length; i += 2) {
 		const [header, value] = raw.slice(i, i + 2);
