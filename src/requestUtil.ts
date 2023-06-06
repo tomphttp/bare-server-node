@@ -131,10 +131,18 @@ export async function upgradeFetch(
 	// NodeJS will convert the URL into HTTP options automatically
 	// see https://github.com/nodejs/node/blob/e30e71665cab94118833cc536a43750703b19633/lib/internal/url.js#L1277
 
+	// calling .replace on remote may look like it replaces other occurrences of wss:, but it only replaces the first which is remote.protocol
+
 	if (remote.protocol === 'wss:')
-		outgoing = httpsRequest(remote, { ...req, agent: options.httpsAgent });
+		outgoing = httpsRequest(remote.toString().replace('wss:', 'https:'), {
+			...req,
+			agent: options.httpsAgent,
+		});
 	else if (remote.protocol === 'ws:')
-		outgoing = httpRequest(remote, { ...req, agent: options.httpAgent });
+		outgoing = httpRequest(remote.toString().replace('ws:', 'http:'), {
+			...req,
+			agent: options.httpAgent,
+		});
 	else throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
 
 	outgoing.end();
