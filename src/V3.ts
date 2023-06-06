@@ -15,18 +15,7 @@ import { remoteToURL, urlToRemote } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
 import { fetch, webSocketFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
-
-type SocketClientToServer = {
-	type: 'connect';
-	to: string;
-	headers: BareHeaders;
-	forwardHeaders: string[];
-};
-
-type SocketServerToClient = {
-	type: 'open';
-	protocol: string;
-};
+import type { SocketClientToServer, SocketServerToClient } from './V3Types.js';
 
 const forbiddenForwardHeaders: string[] = [
 	'connection',
@@ -346,17 +335,26 @@ const tunnelSocket: SocketRouteCallback = async (
 			request
 		);
 
-		const remoteSocket = await webSocketFetch(
+		const [remoteReq, remoteSocket] = await webSocketFetch(
 			request,
 			connectPacket.headers,
-			new URL(connectPacket.to),
+			new URL(connectPacket.remote),
 			options
 		);
+
+		const setCookieHeader = remoteReq.headers['set-cookie'];
+		const setCookies =
+			setCookieHeader !== undefined
+				? Array.isArray(setCookieHeader)
+					? setCookieHeader
+					: [setCookieHeader]
+				: [];
 
 		client.send(
 			JSON.stringify({
 				type: 'open',
 				protocol: remoteSocket.protocol,
+				setCookies,
 			} as SocketServerToClient),
 			// use callback to wait for this message to buffer and finally send before doing any piping
 			// otherwise the client will receive a random message from the remote before our open message
@@ -369,12 +367,12 @@ const tunnelSocket: SocketRouteCallback = async (
 					remoteSocket.send(event.data);
 				});
 
-				remoteSocket.addEventListener('close', (event) => {
-					client.close(event.code);
+				remoteSocket.addEventListener('close', () => {
+					client.close();
 				});
 
-				client.addEventListener('close', (event) => {
-					remoteSocket.close(event.code);
+				client.addEventListener('close', () => {
+					remoteSocket.close();
 				});
 
 				remoteSocket.addEventListener('error', (error) => {

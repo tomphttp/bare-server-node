@@ -168,7 +168,7 @@ export async function webSocketFetch(
 	requestHeaders: BareHeaders,
 	remote: URL,
 	options: Options
-): Promise<WebSocket> {
+): Promise<[req: IncomingMessage, socket: WebSocket]> {
 	if (options.filterRemote) await options.filterRemote(remote);
 
 	const req = {
@@ -196,14 +196,20 @@ export async function webSocketFetch(
 	else throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
 
 	return await new Promise((resolve, reject) => {
+		let request: IncomingMessage | undefined;
+
 		const cleanup = () => {
 			outgoing.removeEventListener('open', openListener);
 			outgoing.removeEventListener('open', openListener);
 		};
 
+		outgoing.on('upgrade', (req) => {
+			request = req;
+		});
+
 		const openListener = () => {
 			cleanup();
-			resolve(outgoing);
+			resolve([request!, outgoing]);
 		};
 
 		const errorListener = (event: ErrorEvent) => {

@@ -14,13 +14,7 @@ import type { BareRemote } from './remoteUtil.js';
 import { remoteToURL } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
 import { fetch, randomHex, upgradeFetch } from './requestUtil.js';
-
-interface BareV1Meta {
-	remote: BareRemote;
-	headers: BareHeaders;
-	forward_headers: string[];
-	id?: string;
-}
+import type { BareV1Meta, BareV1MetaRes } from './V1Types.js';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 
@@ -232,7 +226,7 @@ const wsMeta: RouteCallback = async (request, res, options) => {
 
 	return json(200, {
 		headers: meta.value.response?.headers,
-	});
+	} as BareV1MetaRes);
 };
 
 const wsNewMeta: RouteCallback = async (request, res, options) => {
