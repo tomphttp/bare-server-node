@@ -29,8 +29,6 @@ type SocketServerToClient = {
 	protocol: string;
 };
 
-const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
-
 const forbiddenForwardHeaders: string[] = [
 	'connection',
 	'transfer-encoding',
@@ -95,7 +93,6 @@ interface BareHeaderData {
 }
 
 function readHeaders(request: Request): BareHeaderData {
-	const remote = Object.setPrototypeOf({}, null);
 	const sendHeaders = Object.setPrototypeOf({}, null);
 	const passHeaders = [...defaultPassHeaders];
 	const passStatus = [];
@@ -112,96 +109,71 @@ function readHeaders(request: Request): BareHeaderData {
 
 	const headers = joinHeaders(request.headers);
 
-	for (const remoteProp of ['host', 'port', 'protocol', 'path']) {
-		const header = `x-bare-${remoteProp}`;
+	const xBareURL = headers.get('x-bare-url');
 
-		if (headers.has(header)) {
-			const value = headers.get(header)!;
+	if (!xBareURL)
+		throw new BareError(400, {
+			code: 'MISSING_BARE_HEADER',
+			id: `request.headers.x-bare-url`,
+			message: `Header was not specified.`,
+		});
 
-			switch (remoteProp) {
-				case 'port':
-					if (isNaN(parseInt(value))) {
-						throw new BareError(400, {
-							code: 'INVALID_BARE_HEADER',
-							id: `request.headers.${header}`,
-							message: `Header was not a valid integer.`,
-						});
-					}
-					break;
-				case 'protocol':
-					if (!validProtocols.includes(value)) {
-						throw new BareError(400, {
-							code: 'INVALID_BARE_HEADER',
-							id: `request.headers.${header}`,
-							message: `Header was invalid`,
-						});
-					}
-					break;
-			}
+	const remote = urlToRemote(new URL(xBareURL));
 
-			remote[remoteProp] = value;
-		} else {
-			throw new BareError(400, {
-				code: 'MISSING_BARE_HEADER',
-				id: `request.headers.${header}`,
-				message: `Header was not specified.`,
-			});
-		}
-	}
+	const xBareHeaders = headers.has('x-bare-headers');
 
-	if (headers.has('x-bare-headers')) {
-		try {
-			const json = JSON.parse(headers.get('x-bare-headers')!) as Record<
-				string,
-				string | string[]
-			>;
-
-			for (const header in json) {
-				const value = json[header];
-
-				if (typeof value === 'string') {
-					sendHeaders[header] = value;
-				} else if (Array.isArray(value)) {
-					const array: string[] = [];
-
-					for (const val of value) {
-						if (typeof val !== 'string') {
-							throw new BareError(400, {
-								code: 'INVALID_BARE_HEADER',
-								id: `bare.headers.${header}`,
-								message: `Header was not a String.`,
-							});
-						}
-
-						array.push(val);
-					}
-
-					sendHeaders[header] = array;
-				} else {
-					throw new BareError(400, {
-						code: 'INVALID_BARE_HEADER',
-						id: `bare.headers.${header}`,
-						message: `Header was not a String.`,
-					});
-				}
-			}
-		} catch (error) {
-			if (error instanceof SyntaxError) {
-				throw new BareError(400, {
-					code: 'INVALID_BARE_HEADER',
-					id: `request.headers.x-bare-headers`,
-					message: `Header contained invalid JSON. (${error.message})`,
-				});
-			} else {
-				throw error;
-			}
-		}
-	} else {
+	if (!xBareHeaders)
 		throw new BareError(400, {
 			code: 'MISSING_BARE_HEADER',
 			id: `request.headers.x-bare-headers`,
 			message: `Header was not specified.`,
 		});
+
+	try {
+		const json = JSON.parse(headers.get('x-bare-headers')!) as Record<
+			string,
+			string | string[]
+		>;
+
+		for (const header in json) {
+			const value = json[header];
+
+			if (typeof value === 'string') {
+				sendHeaders[header] = value;
+			} else if (Array.isArray(value)) {
+				const array: string[] = [];
+
+				for (const val of value) {
+					if (typeof val !== 'string') {
+						throw new BareError(400, {
+							code: 'INVALID_BARE_HEADER',
+							id: `bare.headers.${header}`,
+							message: `Header was not a String.`,
+						});
+					}
+
+					array.push(val);
+				}
+
+				sendHeaders[header] = array;
+			} else {
+				throw new BareError(400, {
+					code: 'INVALID_BARE_HEADER',
+					id: `bare.headers.${header}`,
+					message: `Header was not a String.`,
+				});
+			}
+		}
+	} catch (error) {
+		if (error instanceof SyntaxError) {
+			throw new BareError(400, {
+				code: 'INVALID_BARE_HEADER',
+				id: `request.headers.x-bare-headers`,
+				message: `Header contained invalid JSON. (${error.message})`,
+			});
+		} else {
+			throw error;
+		}
 	}
 
 	if (headers.has('x-bare-pass-status')) {
