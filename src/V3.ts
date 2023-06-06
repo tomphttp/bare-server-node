@@ -361,6 +361,8 @@ const tunnelSocket: SocketRouteCallback = async (
 				type: 'open',
 				protocol: remoteSocket.protocol,
 			} as SocketServerToClient),
+			// use callback to wait for this message to buffer and finally send before doing any piping
+			// otherwise the client will receive a random message from the remote before our open message
 			() => {
 				remoteSocket.addEventListener('message', (event) => {
 					client.send(event.data);
