@@ -1,6 +1,6 @@
 import http from 'node:http';
+import { createBareServer } from '@tomphttp/bare-server-node';
 import { SocksProxyAgent } from 'socks-proxy-agent';
-import createBareServer from '../dist/createServer.js';
 
 // TOR daemon listens on port 9050 by default
 const socksProxyAgent = new SocksProxyAgent(

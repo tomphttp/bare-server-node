@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const http = require('node:http');
-const createBareServer = require('@tomphttp/bare-server-node');
+const { createBareServer } = require('@tomphttp/bare-server-node');
 
 const httpServer = http.createServer();
 

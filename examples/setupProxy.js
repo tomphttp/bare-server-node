@@ -3,7 +3,7 @@
  * See https://create-react-app.dev/docs/proxying-api-requests-in-development/
  */
 /* eslint-disable @typescript-eslint/no-var-requires */
-const createBareServer = require('@tomphttp/bare-server-node');
+const { createBareServer } = require('@tomphttp/bare-server-node');
 
 /**
  * Entry point called by react-scripts during development (npm start)

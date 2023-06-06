@@ -4,7 +4,7 @@
  */
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
-import createBareServer from '@tomphttp/bare-server-node';
+import { createBareServer } from '@tomphttp/bare-server-node';
 import serveStatic from 'serve-static';
 
 const httpServer = createServer();

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-namespace */
 import { lookup } from 'node:dns';
 import { Agent as HttpAgent } from 'node:http';
 import { Agent as HttpsAgent } from 'node:https';
@@ -12,39 +11,37 @@ import registerV1 from './V1.js';
 import registerV2 from './V2.js';
 import registerV3 from './V3.js';
 
-const validIPFamily: number[] = [0, 4, 6];
+export const validIPFamily: number[] = [0, 4, 6];
 
-declare namespace createBareServer {
-	type IPFamily = 0 | 4 | 6;
+export type IPFamily = 0 | 4 | 6;
 
-	interface BareServerInit {
-		logErrors?: boolean;
-		localAddress?: string;
-		/**
-		 * When set, the default logic for blocking local IP addresses is disabled.
-		 */
-		filterRemote?: Options['filterRemote'];
-		/**
-		 * When set, the default logic for blocking local IP addresses is disabled.
-		 */
-		lookup?: Options['lookup'];
-		/**
-		 * If local IP addresses/DNS records should be blocked.
-		 * @default true
-		 */
-		blockLocal?: boolean;
-		/**
-		 * IP address family to use when resolving `host` or `hostname`. Valid values are `0`, `4`, and `6`. When unspecified/0, both IP v4 and v6 will be used.
-		 */
-		family?: IPFamily | number;
-		maintainer?: BareMaintainer;
-		httpAgent?: HttpAgent;
-		httpsAgent?: HttpsAgent;
-		database?: Database;
-	}
+export interface BareServerInit {
+	logErrors?: boolean;
+	localAddress?: string;
+	/**
+	 * When set, the default logic for blocking local IP addresses is disabled.
+	 */
+	filterRemote?: Options['filterRemote'];
+	/**
+	 * When set, the default logic for blocking local IP addresses is disabled.
+	 */
+	lookup?: Options['lookup'];
+	/**
+	 * If local IP addresses/DNS records should be blocked.
+	 * @default true
+	 */
+	blockLocal?: boolean;
+	/**
+	 * IP address family to use when resolving `host` or `hostname`. Valid values are `0`, `4`, and `6`. When unspecified/0, both IP v4 and v6 will be used.
+	 */
+	family?: IPFamily | number;
+	maintainer?: BareMaintainer;
+	httpAgent?: HttpAgent;
+	httpsAgent?: HttpsAgent;
+	database?: Database;
 }
 
-interface Address {
+export interface Address {
 	address: string;
 	family: number;
 }
@@ -52,7 +49,7 @@ interface Address {
 /**
  * Converts the address and family of a DNS lookup callback into an array if it wasn't already
  */
-function toAddressArray(address: string | Address[], family?: number) {
+export function toAddressArray(address: string | Address[], family?: number) {
 	if (typeof address === 'string')
 		return [
 			{
@@ -67,10 +64,7 @@ function toAddressArray(address: string | Address[], family?: number) {
  * Create a Bare server.
  * This will handle all lifecycles for unspecified options (httpAgent, httpsAgent, metaMap).
  */
-function createBareServer(
-	directory: string,
-	init: createBareServer.BareServerInit = {}
-) {
+export function createBareServer(directory: string, init: BareServerInit = {}) {
 	if (typeof directory !== 'string')
 		throw new Error('Directory must be specified.');
 	if (!directory.startsWith('/') || !directory.endsWith('/'))
@@ -127,7 +121,7 @@ function createBareServer(
 	}
 
 	const server = new BareServer(directory, {
-		...(init as Required<createBareServer.BareServerInit>),
+		...(init as Required<BareServerInit>),
 		database: new JSONDatabaseAdapter(init.database),
 		wss: new WebSocketServer({ noServer: true }),
 	});
@@ -141,5 +135,3 @@ function createBareServer(
 
 	return server;
 }
-
-export = createBareServer;

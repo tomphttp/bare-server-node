@@ -1,5 +1,5 @@
 import http from 'node:http';
-import createBareServer from '@tomphttp/bare-server-node';
+import { createBareServer } from '@tomphttp/bare-server-node';
 import HttpsProxyAgent from 'https-proxy-agent';
 
 const httpProxyAgent = new HttpsProxyAgent('http://168.63.76.32:3128');
