@@ -10,9 +10,11 @@ import type { Agent as HttpsAgent } from 'node:https';
 import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
 import createHttpError from 'http-errors';
+import type WebSocket from 'ws';
 import { Request, Response, writeResponse } from './AbstractMessage.js';
 import type { JSONDatabaseAdapter } from './Meta.js';
-import type { BareHeaders, BareRemote } from './requestUtil.js';
+import type { BareRemote } from './remoteUtil.js';
+import type { BareHeaders } from './requestUtil.js';
 
 export interface BareErrorBody {
 	code: string;
@@ -121,6 +123,7 @@ export interface Options {
 	httpAgent: HttpAgent;
 	httpsAgent: HttpsAgent;
 	database: JSONDatabaseAdapter;
+	wss: WebSocket.Server;
 }
 
 export type RouteCallback = (

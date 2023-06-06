@@ -1,4 +1,6 @@
 import { Headers } from 'headers-polyfill';
+import type WebSocket from 'ws';
+import type { MessageEvent } from 'ws';
 import type { Request } from './AbstractMessage.js';
 import { Response } from './AbstractMessage.js';
 import type { RouteCallback, SocketRouteCallback } from './BareServer.js';
@@ -9,9 +11,23 @@ import {
 	mapHeadersFromArray,
 	rawHeaderNames,
 } from './headerUtil.js';
-import type { BareHeaders, BareRemote } from './requestUtil.js';
-import { fetch, randomHex, upgradeFetch } from './requestUtil.js';
+import type { BareRemote } from './remoteUtil.js';
+import { urlToRemote } from './remoteUtil.js';
+import type { BareHeaders } from './requestUtil.js';
+import { fetch, webSocketFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
+
+type SocketClientToServer = {
+	type: 'connect';
+	to: string;
+	headers: BareHeaders;
+	forwardHeaders: string[];
+};
+
+type SocketServerToClient = {
+	type: 'open';
+	protocol: string;
+};
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 
@@ -37,13 +53,7 @@ const forbiddenPassHeaders: string[] = [
 ];
 
 // common defaults
-const defaultForwardHeaders: string[] = [
-	'accept-encoding',
-	'accept-language',
-	'sec-websocket-extensions',
-	'sec-websocket-key',
-	'sec-websocket-version',
-];
+const defaultForwardHeaders: string[] = ['accept-encoding', 'accept-language'];
 
 const defaultPassHeaders: string[] = [
 	'content-encoding',
@@ -313,182 +323,112 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 	});
 };
 
-const metaExpiration = 30e3;
+function readSocket(socket: WebSocket): Promise<SocketClientToServer> {
+	return new Promise((resolve, reject) => {
+		const messageListener = (event: MessageEvent) => {
+			cleanup();
 
-const getMeta: RouteCallback = async (request, res, options) => {
-	if (request.method === 'OPTIONS') {
-		return new Response(undefined, { status: 200 });
-	}
+			if (typeof event.data !== 'string')
+				return reject(
+					new TypeError('the first websocket message was not a text frame')
+				);
 
-	if (!request.headers.has('x-bare-id')) {
-		throw new BareError(400, {
-			code: 'MISSING_BARE_HEADER',
-			id: 'request.headers.x-bare-id',
-			message: 'Header was not specified',
-		});
-	}
+			try {
+				resolve(JSON.parse(event.data));
+			} catch (err) {
+				reject(err);
+			}
+		};
 
-	const id = request.headers.get('x-bare-id')!;
-	const meta = await options.database.get(id);
+		const closeListener = () => {
+			cleanup();
+		};
 
-	if (meta?.value.v !== 2)
-		throw new BareError(400, {
-			code: 'INVALID_BARE_HEADER',
-			id: 'request.headers.x-bare-id',
-			message: 'Unregistered ID',
-		});
+		const cleanup = () => {
+			socket.removeEventListener('message', messageListener);
+			socket.removeEventListener('close', closeListener);
+			clearTimeout(timeout);
+		};
 
-	if (!meta.value.response)
-		throw new BareError(400, {
-			code: 'INVALID_BARE_HEADER',
-			id: 'request.headers.x-bare-id',
-			message: 'Meta not ready',
-		});
+		const timeout = setTimeout(() => {
+			cleanup();
+			reject(new Error('Timed out before metadata could be read'));
+		}, 10e3);
 
-	await options.database.delete(id);
-
-	const responseHeaders = new Headers();
-
-	responseHeaders.set('x-bare-status', meta.value.response.status.toString());
-	responseHeaders.set('x-bare-status-text', meta.value.response.statusText);
-	responseHeaders.set(
-		'x-bare-headers',
-		JSON.stringify(meta.value.response.headers)
-	);
-
-	return new Response(undefined, {
-		status: 200,
-		headers: splitHeaders(responseHeaders),
+		socket.addEventListener('message', messageListener);
+		socket.addEventListener('close', closeListener);
 	});
-};
-
-const newMeta: RouteCallback = async (request, res, options) => {
-	const { remote, sendHeaders, forwardHeaders } = readHeaders(request);
-
-	const id = randomHex(16);
-
-	await options.database.set(id, {
-		expires: Date.now() + metaExpiration,
-		value: {
-			v: 2,
-			remote,
-			sendHeaders,
-			forwardHeaders,
-		},
-	});
-
-	return new Response(Buffer.from(id));
-};
+}
 
 const tunnelSocket: SocketRouteCallback = async (
 	request,
 	socket,
 	head,
 	options
-) => {
-	const abort = new AbortController();
+) =>
+	options.wss.handleUpgrade(request.body, socket, head, async (client) => {
+		const connectPacket = await readSocket(client);
 
-	request.body.on('close', () => {
-		if (!request.body.complete) abort.abort();
-	});
+		console.trace(connectPacket);
 
-	socket.on('close', () => {
-		abort.abort();
-	});
+		if (connectPacket.type !== 'connect')
+			throw new Error('Client did not send open packet.');
 
-	if (!request.headers.has('sec-websocket-protocol')) {
-		socket.end();
-		return;
-	}
-
-	const id = request.headers.get('sec-websocket-protocol')!;
-	const meta = await options.database.get(id);
-
-	if (meta?.value.v !== 2) {
-		socket.end();
-		return;
-	}
-
-	loadForwardedHeaders(
-		meta.value.forwardHeaders,
-		meta.value.sendHeaders,
-		request
-	);
-
-	const [remoteResponse, remoteSocket] = await upgradeFetch(
-		request,
-		abort.signal,
-		meta.value.sendHeaders,
-		meta.value.remote,
-		options
-	);
-
-	remoteSocket.on('close', () => {
-		socket.end();
-	});
-
-	socket.on('close', () => {
-		remoteSocket.end();
-	});
-
-	remoteSocket.on('error', (error) => {
-		if (options.logErrors) {
-			console.error('Remote socket error:', error);
-		}
-
-		socket.end();
-	});
-
-	socket.on('error', (error) => {
-		if (options.logErrors) {
-			console.error('Serving socket error:', error);
-		}
-
-		remoteSocket.end();
-	});
-
-	const remoteHeaders = new Headers(<HeadersInit>remoteResponse.headers);
-
-	meta.value.response = {
-		headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
-			...(<BareHeaders>remoteResponse.headers),
-		}),
-		status: remoteResponse.statusCode!,
-		statusText: remoteResponse.statusMessage!,
-	};
-
-	await options.database.set(id, meta);
-
-	const responseHeaders = [
-		`HTTP/1.1 101 Switching Protocols`,
-		`Upgrade: websocket`,
-		`Connection: Upgrade`,
-		`Sec-WebSocket-Protocol: ${id}`,
-	];
-
-	if (remoteHeaders.has('sec-websocket-extensions')) {
-		responseHeaders.push(
-			`Sec-WebSocket-Extensions: ${remoteHeaders.get(
-				'sec-websocket-extensions'
-			)}`
+		loadForwardedHeaders(
+			connectPacket.forwardHeaders,
+			connectPacket.headers,
+			request
 		);
-	}
 
-	if (remoteHeaders.has('sec-websocket-accept')) {
-		responseHeaders.push(
-			`Sec-WebSocket-Accept: ${remoteHeaders.get('sec-websocket-accept')}`
+		const remoteSocket = await webSocketFetch(
+			request,
+			connectPacket.headers,
+			urlToRemote(new URL(connectPacket.to)),
+			options
 		);
-	}
 
-	socket.write(responseHeaders.concat('', '').join('\r\n'));
+		client.send(
+			JSON.stringify({
+				type: 'open',
+				protocol: remoteSocket.protocol,
+			} as SocketServerToClient),
+			() => {
+				remoteSocket.addEventListener('message', (event) => {
+					client.send(event.data);
+				});
 
-	remoteSocket.pipe(socket);
-	socket.pipe(remoteSocket);
-};
+				client.addEventListener('message', (event) => {
+					remoteSocket.send(event.data);
+				});
+
+				remoteSocket.addEventListener('close', (event) => {
+					client.close(event.code);
+				});
+
+				client.addEventListener('close', (event) => {
+					remoteSocket.close(event.code);
+				});
+
+				remoteSocket.addEventListener('error', (error) => {
+					if (options.logErrors) {
+						console.error('Remote socket error:', error);
+					}
+
+					client.close();
+				});
+
+				client.addEventListener('error', (error) => {
+					if (options.logErrors) {
+						console.error('Serving socket error:', error);
+					}
+
+					remoteSocket.close();
+				});
+			}
+		);
+	});
 
 export default function registerV3(server: Server) {
 	server.routes.set('/v3/', tunnelRequest);
-	server.routes.set('/v3/ws-new-meta', newMeta);
-	server.routes.set('/v3/ws-meta', getMeta);
 	server.socketRoutes.set('/v3/', tunnelSocket);
 }

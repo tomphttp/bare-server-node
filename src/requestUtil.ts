@@ -3,16 +3,13 @@ import type { ClientRequest, IncomingMessage, RequestOptions } from 'node:http';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import type { Duplex } from 'node:stream';
+import type { ErrorEvent } from 'ws';
+import WebSocket from 'ws';
 import type { Request } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
 import type { Options } from './BareServer.js';
-
-export interface BareRemote {
-	host: string;
-	port: number | string;
-	path: string;
-	protocol: string;
-}
+import type { BareRemote } from './remoteUtil.js';
+import { remoteToURL } from './remoteUtil.js';
 
 export type BareHeaders = Record<string, string | string[]>;
 
@@ -157,5 +154,61 @@ export async function upgradeFetch(
 		outgoing.on('error', (error) => {
 			reject(outgoingError(error));
 		});
+	});
+}
+
+export async function webSocketFetch(
+	request: Request,
+	requestHeaders: BareHeaders,
+	remote: BareRemote,
+	options: Options
+): Promise<WebSocket> {
+	if (options.filterRemote) await options.filterRemote(remote);
+
+	const req = {
+		host: remote.host,
+		port: remote.port,
+		path: remote.path,
+		headers: requestHeaders,
+		method: request.method,
+		timeout: 12e3,
+		setHost: false,
+		localAddress: options.localAddress,
+		family: options.family,
+		lookup: options.lookup,
+	};
+
+	let outgoing: WebSocket;
+
+	if (remote.protocol === 'wss:')
+		outgoing = new WebSocket(remoteToURL(remote), {
+			...req,
+			agent: options.httpsAgent,
+		});
+	else if (remote.protocol === 'ws:')
+		outgoing = new WebSocket(remoteToURL(remote), {
+			...req,
+			agent: options.httpAgent,
+		});
+	else throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
+
+	return await new Promise((resolve, reject) => {
+		const cleanup = () => {
+			outgoing.removeEventListener('open', openListener);
+			outgoing.removeEventListener('open', openListener);
+		};
+
+		const openListener = () => {
+			cleanup();
+			resolve(outgoing);
+		};
+
+		const errorListener = (event: ErrorEvent) => {
+			cleanup();
+			reject(outgoingError(event.error));
+		};
+
+		outgoing.addEventListener('open', openListener);
+		outgoing.addEventListener('error', errorListener);
 	});
 }

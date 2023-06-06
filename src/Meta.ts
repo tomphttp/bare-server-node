@@ -1,4 +1,5 @@
-import type { BareHeaders, BareRemote } from './requestUtil';
+import type { BareRemote } from './remoteUtil';
+import type { BareHeaders } from './requestUtil';
 
 export interface MetaV1 {
 	v: 1;

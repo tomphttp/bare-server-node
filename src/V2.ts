@@ -9,7 +9,8 @@ import {
 	mapHeadersFromArray,
 	rawHeaderNames,
 } from './headerUtil.js';
-import type { BareHeaders, BareRemote } from './requestUtil.js';
+import type { BareRemote } from './remoteUtil.js';
+import type { BareHeaders } from './requestUtil.js';
 import { fetch, randomHex, upgradeFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
 

@@ -3,11 +3,12 @@ import { lookup } from 'node:dns';
 import { Agent as HttpAgent } from 'node:http';
 import { Agent as HttpsAgent } from 'node:https';
 import { isValid, parse } from 'ipaddr.js';
+import { WebSocketServer } from 'ws';
 import BareServer from './BareServer.js';
 import type { BareMaintainer, Options } from './BareServer.js';
 import type { Database } from './Meta.js';
 import { cleanupDatabase, JSONDatabaseAdapter } from './Meta.js';
-import type { BareRemote } from './requestUtil.js';
+import type { BareRemote } from './remoteUtil.js';
 import registerV1 from './V1.js';
 import registerV2 from './V2.js';
 import registerV3 from './V3.js';
@@ -127,6 +128,7 @@ function createBareServer(
 	const server = new BareServer(directory, {
 		...(init as Required<createBareServer.BareServerInit>),
 		database: new JSONDatabaseAdapter(init.database),
+		wss: new WebSocketServer({ noServer: true }),
 	});
 	registerV1(server);
 	registerV2(server);
