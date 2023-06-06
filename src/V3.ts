@@ -111,7 +111,7 @@ function readHeaders(request: Request): BareHeaderData {
 
 	const xBareURL = headers.get('x-bare-url');
 
-	if (!xBareURL)
+	if (xBareURL === null)
 		throw new BareError(400, {
 			code: 'MISSING_BARE_HEADER',
 			id: `request.headers.x-bare-url`,
@@ -120,9 +120,9 @@ function readHeaders(request: Request): BareHeaderData {
 
 	const remote = urlToRemote(new URL(xBareURL));
 
-	const xBareHeaders = headers.has('x-bare-headers');
+	const xBareHeaders = headers.get('x-bare-headers');
 
-	if (!xBareHeaders)
+	if (xBareHeaders === null)
 		throw new BareError(400, {
 			code: 'MISSING_BARE_HEADER',
 			id: `request.headers.x-bare-headers`,
@@ -130,10 +130,7 @@ function readHeaders(request: Request): BareHeaderData {
 		});
 
 	try {
-		const json = JSON.parse(headers.get('x-bare-headers')!) as Record<
-			string,
-			string | string[]
-		>;
+		const json = JSON.parse(xBareHeaders) as Record<string, string | string[]>;
 
 		for (const header in json) {
 			const value = json[header];
