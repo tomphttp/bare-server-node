@@ -7,6 +7,10 @@ export type SocketClientToServer = {
 	 */
 	remote: string;
 	/**
+	 * An array of protocols to attempt to connect to.
+	 */
+	protocols: string[];
+	/**
 	 * Headers to send to the remote. Usually Cookie, Origin, and User-Agent.
 	 */
 	headers: BareHeaders;

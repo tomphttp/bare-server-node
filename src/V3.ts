@@ -339,6 +339,7 @@ const tunnelSocket: SocketRouteCallback = async (
 			request,
 			connectPacket.headers,
 			new URL(connectPacket.remote),
+			connectPacket.protocols,
 			options
 		);
 

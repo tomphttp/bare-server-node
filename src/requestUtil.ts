@@ -167,6 +167,7 @@ export async function webSocketFetch(
 	request: Request,
 	requestHeaders: BareHeaders,
 	remote: URL,
+	protocols: string[],
 	options: Options
 ): Promise<[req: IncomingMessage, socket: WebSocket]> {
 	if (options.filterRemote) await options.filterRemote(remote);
@@ -184,12 +185,12 @@ export async function webSocketFetch(
 	let outgoing: WebSocket;
 
 	if (remote.protocol === 'wss:')
-		outgoing = new WebSocket(remote, {
+		outgoing = new WebSocket(remote, protocols, {
 			...req,
 			agent: options.httpsAgent,
 		});
 	else if (remote.protocol === 'ws:')
-		outgoing = new WebSocket(remote, {
+		outgoing = new WebSocket(remote, protocols, {
 			...req,
 			agent: options.httpAgent,
 		});
