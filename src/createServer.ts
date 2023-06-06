@@ -8,7 +8,6 @@ import BareServer from './BareServer.js';
 import type { BareMaintainer, Options } from './BareServer.js';
 import type { Database } from './Meta.js';
 import { cleanupDatabase, JSONDatabaseAdapter } from './Meta.js';
-import type { BareRemote } from './remoteUtil.js';
 import registerV1 from './V1.js';
 import registerV2 from './V2.js';
 import registerV3 from './V3.js';
@@ -84,8 +83,10 @@ function createBareServer(
 		throw new RangeError('init.family must be one of: 0, 4, 6');
 
 	if (init.blockLocal ?? true) {
-		init.filterRemote ??= (remote: BareRemote) => {
-			if (isValid(remote.host) && parse(remote.host).range() !== 'unicast')
+		init.filterRemote ??= (url) => {
+			// if the remote is an IP then it didn't go through the init.lookup hook
+			// isValid determines if this is so
+			if (isValid(url.hostname) && parse(url.hostname).range() !== 'unicast')
 				throw new RangeError('Forbidden IP');
 		};
 

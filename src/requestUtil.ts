@@ -8,8 +8,6 @@ import WebSocket from 'ws';
 import type { Request } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
 import type { Options } from './BareServer.js';
-import type { BareRemote } from './remoteUtil.js';
-import { remoteToURL } from './remoteUtil.js';
 
 export type BareHeaders = Record<string, string | string[]>;
 
@@ -58,15 +56,12 @@ export async function fetch(
 	request: Request,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
-	remote: BareRemote,
+	remote: URL,
 	options: Options
 ): Promise<IncomingMessage> {
 	if (options.filterRemote) await options.filterRemote(remote);
 
 	const req: RequestOptions = {
-		host: remote.host,
-		port: remote.port,
-		path: remote.path,
 		method: request.method,
 		headers: requestHeaders,
 		setHost: false,
@@ -78,13 +73,16 @@ export async function fetch(
 
 	let outgoing: ClientRequest;
 
+	// NodeJS will convert the URL into HTTP options automatically
+	// see https://github.com/nodejs/node/blob/e30e71665cab94118833cc536a43750703b19633/lib/internal/url.js#L1277
+
 	if (remote.protocol === 'https:')
-		outgoing = httpsRequest({
+		outgoing = httpsRequest(remote, {
 			...req,
 			agent: options.httpsAgent,
 		});
 	else if (remote.protocol === 'http:')
-		outgoing = httpRequest({
+		outgoing = httpRequest(remote, {
 			...req,
 			agent: options.httpAgent,
 		});
@@ -112,15 +110,12 @@ export async function upgradeFetch(
 	request: Request,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
-	remote: BareRemote,
+	remote: URL,
 	options: Options
 ): Promise<[res: IncomingMessage, socket: Duplex, head: Buffer]> {
 	if (options.filterRemote) await options.filterRemote(remote);
 
 	const req: RequestOptions = {
-		host: remote.host,
-		port: remote.port,
-		path: remote.path,
 		headers: requestHeaders,
 		method: request.method,
 		timeout: 12e3,
@@ -133,10 +128,13 @@ export async function upgradeFetch(
 
 	let outgoing: ClientRequest;
 
+	// NodeJS will convert the URL into HTTP options automatically
+	// see https://github.com/nodejs/node/blob/e30e71665cab94118833cc536a43750703b19633/lib/internal/url.js#L1277
+
 	if (remote.protocol === 'wss:')
-		outgoing = httpsRequest({ ...req, agent: options.httpsAgent });
+		outgoing = httpsRequest(remote, { ...req, agent: options.httpsAgent });
 	else if (remote.protocol === 'ws:')
-		outgoing = httpRequest({ ...req, agent: options.httpAgent });
+		outgoing = httpRequest(remote, { ...req, agent: options.httpAgent });
 	else throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
 
 	outgoing.end();
@@ -160,15 +158,12 @@ export async function upgradeFetch(
 export async function webSocketFetch(
 	request: Request,
 	requestHeaders: BareHeaders,
-	remote: BareRemote,
+	remote: URL,
 	options: Options
 ): Promise<WebSocket> {
 	if (options.filterRemote) await options.filterRemote(remote);
 
 	const req = {
-		host: remote.host,
-		port: remote.port,
-		path: remote.path,
 		headers: requestHeaders,
 		method: request.method,
 		timeout: 12e3,
@@ -181,12 +176,12 @@ export async function webSocketFetch(
 	let outgoing: WebSocket;
 
 	if (remote.protocol === 'wss:')
-		outgoing = new WebSocket(remoteToURL(remote), {
+		outgoing = new WebSocket(remote, {
 			...req,
 			agent: options.httpsAgent,
 		});
 	else if (remote.protocol === 'ws:')
-		outgoing = new WebSocket(remoteToURL(remote), {
+		outgoing = new WebSocket(remote, {
 			...req,
 			agent: options.httpAgent,
 		});

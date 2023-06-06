@@ -11,6 +11,7 @@ import {
 	rawHeaderNames,
 } from './headerUtil.js';
 import type { BareRemote } from './remoteUtil.js';
+import { remoteToURL } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
 import { fetch, randomHex, upgradeFetch } from './requestUtil.js';
 
@@ -28,7 +29,7 @@ function loadForwardedHeaders(
 }
 
 interface BareHeaderData {
-	remote: BareRemote;
+	remote: URL;
 	headers: BareHeaders;
 }
 
@@ -146,7 +147,7 @@ function readHeaders(request: Request): BareHeaderData {
 		});
 	}
 
-	return { remote: remote as BareRemote, headers };
+	return { remote: remoteToURL(remote as BareRemote), headers };
 }
 
 const tunnelRequest: RouteCallback = async (request, res, options) => {

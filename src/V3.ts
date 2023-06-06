@@ -11,8 +11,7 @@ import {
 	mapHeadersFromArray,
 	rawHeaderNames,
 } from './headerUtil.js';
-import type { BareRemote } from './remoteUtil.js';
-import { urlToRemote } from './remoteUtil.js';
+import { remoteToURL, urlToRemote } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
 import { fetch, webSocketFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
@@ -85,7 +84,7 @@ function loadForwardedHeaders(
 const splitHeaderValue = /,\s*/g;
 
 interface BareHeaderData {
-	remote: BareRemote;
+	remote: URL;
 	sendHeaders: BareHeaders;
 	passHeaders: string[];
 	passStatus: number[];
@@ -230,7 +229,7 @@ function readHeaders(request: Request): BareHeaderData {
 	}
 
 	return {
-		remote,
+		remote: remoteToURL(remote),
 		sendHeaders,
 		passHeaders,
 		passStatus,
@@ -352,7 +351,7 @@ const tunnelSocket: SocketRouteCallback = async (
 		const remoteSocket = await webSocketFetch(
 			request,
 			connectPacket.headers,
-			urlToRemote(new URL(connectPacket.to)),
+			new URL(connectPacket.to),
 			options
 		);
 

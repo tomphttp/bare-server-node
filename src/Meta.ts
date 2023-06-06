@@ -1,4 +1,3 @@
-import type { BareRemote } from './remoteUtil';
 import type { BareHeaders } from './requestUtil';
 
 export interface MetaV1 {
@@ -12,7 +11,7 @@ export interface MetaV2 {
 	v: 2;
 	response?: { status: number; statusText: string; headers: BareHeaders };
 	sendHeaders: BareHeaders;
-	remote: BareRemote;
+	remote: URL;
 	forwardHeaders: string[];
 }
 

@@ -13,7 +13,6 @@ import createHttpError from 'http-errors';
 import type WebSocket from 'ws';
 import { Request, Response, writeResponse } from './AbstractMessage.js';
 import type { JSONDatabaseAdapter } from './Meta.js';
-import type { BareRemote } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
 
 export interface BareErrorBody {
@@ -98,11 +97,10 @@ export interface Options {
 	logErrors: boolean;
 	/**
 	 * Callback for filtering the remote URL.
-	 * @param remote
 	 * @returns Nothing
 	 * @throws An error if the remote is bad.
 	 */
-	filterRemote?: (remote: BareRemote) => Promise<void> | void;
+	filterRemote?: (remote: Readonly<URL>) => Promise<void> | void;
 	/**
 	 * DNS lookup
 	 * May not get called when remote.host is an IP

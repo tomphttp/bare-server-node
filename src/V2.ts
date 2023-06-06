@@ -10,6 +10,7 @@ import {
 	rawHeaderNames,
 } from './headerUtil.js';
 import type { BareRemote } from './remoteUtil.js';
+import { remoteToURL } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
 import { fetch, randomHex, upgradeFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
@@ -78,7 +79,7 @@ function loadForwardedHeaders(
 const splitHeaderValue = /,\s*/g;
 
 interface BareHeaderData {
-	remote: BareRemote;
+	remote: URL;
 	sendHeaders: BareHeaders;
 	passHeaders: string[];
 	passStatus: number[];
@@ -248,7 +249,7 @@ function readHeaders(request: Request): BareHeaderData {
 	}
 
 	return {
-		remote: remote as BareRemote,
+		remote: remoteToURL(remote as BareRemote),
 		sendHeaders,
 		passHeaders,
 		passStatus,
