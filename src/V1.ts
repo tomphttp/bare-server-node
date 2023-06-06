@@ -15,6 +15,13 @@ import { remoteToURL } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
 import { fetch, randomHex, upgradeFetch } from './requestUtil.js';
 
+interface BareV1Meta {
+	remote: BareRemote;
+	headers: BareHeaders;
+	forward_headers: string[];
+	id?: string;
+}
+
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 
 function loadForwardedHeaders(
@@ -274,7 +281,7 @@ const tunnelSocket: SocketRouteCallback = async (
 		headers,
 		forward_headers: forwardHeaders,
 		id,
-	} = JSON.parse(decodeProtocol(data));
+	} = JSON.parse(decodeProtocol(data)) as BareV1Meta;
 
 	loadForwardedHeaders(forwardHeaders, headers, request);
 
@@ -282,7 +289,7 @@ const tunnelSocket: SocketRouteCallback = async (
 		request,
 		abort.signal,
 		headers,
-		remote,
+		remoteToURL(remote),
 		options
 	);
 
@@ -310,15 +317,20 @@ const tunnelSocket: SocketRouteCallback = async (
 		remoteSocket.end();
 	});
 
-	const meta = await options.database.get(id);
+	if (typeof id === 'string') {
+		const meta = await options.database.get(id);
 
-	if (meta?.value.v === 1) {
-		meta.value.response = {
-			headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
-				...(<BareHeaders>remoteResponse.headers),
-			}),
-		};
-		await options.database.set(id, meta);
+		if (meta?.value.v === 1) {
+			meta.value.response = {
+				headers: mapHeadersFromArray(
+					rawHeaderNames(remoteResponse.rawHeaders),
+					{
+						...(<BareHeaders>remoteResponse.headers),
+					}
+				),
+			};
+			await options.database.set(id, meta);
+		}
 	}
 
 	const responseHeaders = [
