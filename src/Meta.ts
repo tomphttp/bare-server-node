@@ -11,7 +11,7 @@ export interface MetaV2 {
 	v: 2;
 	response?: { status: number; statusText: string; headers: BareHeaders };
 	sendHeaders: BareHeaders;
-	remote: URL;
+	remote: string;
 	forwardHeaders: string[];
 }
 

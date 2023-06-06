@@ -369,7 +369,7 @@ const newMeta: RouteCallback = async (request, res, options) => {
 		expires: Date.now() + metaExpiration,
 		value: {
 			v: 2,
-			remote,
+			remote: remote.toString(),
 			sendHeaders,
 			forwardHeaders,
 		},
@@ -417,7 +417,7 @@ const tunnelSocket: SocketRouteCallback = async (
 		request,
 		abort.signal,
 		meta.value.sendHeaders,
-		meta.value.remote,
+		new URL(meta.value.remote),
 		options
 	);
 
