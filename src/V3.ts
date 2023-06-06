@@ -337,8 +337,6 @@ const tunnelSocket: SocketRouteCallback = async (
 	options.wss.handleUpgrade(request.body, socket, head, async (client) => {
 		const connectPacket = await readSocket(client);
 
-		console.trace(connectPacket);
-
 		if (connectPacket.type !== 'connect')
 			throw new Error('Client did not send open packet.');
 
