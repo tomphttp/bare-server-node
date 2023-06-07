@@ -5,7 +5,8 @@ import exitHook from 'async-exit-hook';
 import { Command } from 'commander';
 import { config } from 'dotenv';
 import { pkg } from './BareServer.js';
-import createBareServer from './createServer.js';
+import type { BareServerInit, IPFamily } from './createServer.js';
+import { createBareServer } from './createServer.js';
 
 config();
 
@@ -76,10 +77,10 @@ program
 			maintainerFile?: string;
 			blockLocal?: boolean;
 		}) => {
-			const config: createBareServer.BareServerInit = {
+			const config: BareServerInit = {
 				logErrors: errors,
 				localAddress,
-				family: family as createBareServer.IPFamily,
+				family: family as IPFamily,
 				blockLocal,
 				maintainer: maintainer
 					? JSON.parse(maintainer)
