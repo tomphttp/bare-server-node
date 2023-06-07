@@ -324,75 +324,85 @@ const tunnelSocket: SocketRouteCallback = async (
 	options
 ) =>
 	options.wss.handleUpgrade(request.body, socket, head, async (client) => {
-		const connectPacket = await readSocket(client);
+		let _remoteSocket: WebSocket | undefined;
 
-		if (connectPacket.type !== 'connect')
-			throw new Error('Client did not send open packet.');
+		try {
+			const connectPacket = await readSocket(client);
 
-		loadForwardedHeaders(
-			connectPacket.forwardHeaders,
-			connectPacket.headers,
-			request
-		);
+			if (connectPacket.type !== 'connect')
+				throw new Error('Client did not send open packet.');
 
-		const [remoteReq, remoteSocket] = await webSocketFetch(
-			request,
-			connectPacket.headers,
-			new URL(connectPacket.remote),
-			connectPacket.protocols,
-			options
-		);
+			loadForwardedHeaders(
+				connectPacket.forwardHeaders,
+				connectPacket.headers,
+				request
+			);
 
-		const setCookieHeader = remoteReq.headers['set-cookie'];
-		const setCookies =
-			setCookieHeader !== undefined
-				? Array.isArray(setCookieHeader)
-					? setCookieHeader
-					: [setCookieHeader]
-				: [];
+			const [remoteReq, remoteSocket] = await webSocketFetch(
+				request,
+				connectPacket.headers,
+				new URL(connectPacket.remote),
+				connectPacket.protocols,
+				options
+			);
 
-		client.send(
-			JSON.stringify({
-				type: 'open',
-				protocol: remoteSocket.protocol,
-				setCookies,
-			} as SocketServerToClient),
-			// use callback to wait for this message to buffer and finally send before doing any piping
-			// otherwise the client will receive a random message from the remote before our open message
-			() => {
-				remoteSocket.addEventListener('message', (event) => {
-					client.send(event.data);
-				});
+			_remoteSocket = remoteSocket;
 
-				client.addEventListener('message', (event) => {
-					remoteSocket.send(event.data);
-				});
+			const setCookieHeader = remoteReq.headers['set-cookie'];
+			const setCookies =
+				setCookieHeader !== undefined
+					? Array.isArray(setCookieHeader)
+						? setCookieHeader
+						: [setCookieHeader]
+					: [];
 
-				remoteSocket.addEventListener('close', () => {
-					client.close();
-				});
+			client.send(
+				JSON.stringify({
+					type: 'open',
+					protocol: remoteSocket.protocol,
+					setCookies,
+				} as SocketServerToClient),
+				// use callback to wait for this message to buffer and finally send before doing any piping
+				// otherwise the client will receive a random message from the remote before our open message
+				() => {
+					remoteSocket.addEventListener('message', (event) => {
+						client.send(event.data);
+					});
 
-				client.addEventListener('close', () => {
-					remoteSocket.close();
-				});
+					client.addEventListener('message', (event) => {
+						remoteSocket.send(event.data);
+					});
 
-				remoteSocket.addEventListener('error', (error) => {
-					if (options.logErrors) {
-						console.error('Remote socket error:', error);
-					}
+					remoteSocket.addEventListener('close', () => {
+						client.close();
+					});
 
-					client.close();
-				});
+					client.addEventListener('close', () => {
+						remoteSocket.close();
+					});
 
-				client.addEventListener('error', (error) => {
-					if (options.logErrors) {
-						console.error('Serving socket error:', error);
-					}
+					remoteSocket.addEventListener('error', (error) => {
+						if (options.logErrors) {
+							console.error('Remote socket error:', error);
+						}
 
-					remoteSocket.close();
-				});
-			}
-		);
+						client.close();
+					});
+
+					client.addEventListener('error', (error) => {
+						if (options.logErrors) {
+							console.error('Serving socket error:', error);
+						}
+
+						remoteSocket.close();
+					});
+				}
+			);
+		} catch (err) {
+			if (options.logErrors) console.error(err);
+			client.close();
+			if (_remoteSocket) _remoteSocket.close();
+		}
 	});
 
 export default function registerV3(server: Server) {
