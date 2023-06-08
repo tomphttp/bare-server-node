@@ -408,4 +408,5 @@ const tunnelSocket: SocketRouteCallback = async (
 export default function registerV3(server: Server) {
 	server.routes.set('/v3/', tunnelRequest);
 	server.socketRoutes.set('/v3/', tunnelSocket);
+	server.versions.push('v3');
 }

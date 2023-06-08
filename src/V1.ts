@@ -352,4 +352,5 @@ export default function registerV1(server: Server) {
 	server.routes.set('/v1/ws-new-meta', wsNewMeta);
 	server.routes.set('/v1/ws-meta', wsMeta);
 	server.socketRoutes.set('/v1/', tunnelSocket);
+	server.versions.push('v1');
 }

@@ -140,6 +140,7 @@ export type SocketRouteCallback = (
 export default class Server extends EventEmitter {
 	routes = new Map<string, RouteCallback>();
 	socketRoutes = new Map<string, SocketRouteCallback>();
+	versions: string[] = [];
 	private closed = false;
 	private directory: string;
 	private options: Options;
@@ -167,7 +168,7 @@ export default class Server extends EventEmitter {
 	}
 	get instanceInfo(): BareManifest {
 		return {
-			versions: ['v1', 'v2', 'v3'],
+			versions: this.versions,
 			language: 'NodeJS',
 			memoryUsage:
 				Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
