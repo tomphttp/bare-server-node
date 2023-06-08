@@ -38,6 +38,11 @@ export interface BareServerInit {
 	maintainer?: BareMaintainer;
 	httpAgent?: HttpAgent;
 	httpsAgent?: HttpsAgent;
+	/**
+	 * If legacy clients should be supported (v1 & v2). If this is set to false, the database can be safely ignored.
+	 * @default true
+	 */
+	legacySupport?: boolean;
 	database?: Database;
 }
 
@@ -125,8 +130,14 @@ export function createBareServer(directory: string, init: BareServerInit = {}) {
 		database: new JSONDatabaseAdapter(init.database),
 		wss: new WebSocketServer({ noServer: true }),
 	});
-	registerV1(server);
-	registerV2(server);
+
+	init.legacySupport ??= true;
+
+	if (init.legacySupport) {
+		registerV1(server);
+		registerV2(server);
+	}
+
 	registerV3(server);
 
 	server.once('close', () => {
