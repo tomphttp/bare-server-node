@@ -1,4 +1,4 @@
-import './sourceMap.js';
+import 'source-map-support/register.js';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import exitHook from 'async-exit-hook';
