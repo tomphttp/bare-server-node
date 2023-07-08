@@ -21,7 +21,8 @@ export class Request {
 		this.body = body;
 		this.method = init.method;
 		this.headers = new Headers(init.headers);
-		this.url = new URL(`http:${this.headers.get('host')}${init.path}`);
+		// Parse the URL pathname. Host doesn't matter.
+		this.url = new URL(init.path, 'http://bare-server-node');
 	}
 }
 
