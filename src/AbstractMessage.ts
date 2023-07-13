@@ -1,6 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Stream } from 'node:stream';
-import { Headers } from 'headers-polyfill';
 import type { BareHeaders } from './requestUtil.js';
 
 export interface RequestInit {
@@ -20,7 +19,7 @@ export class Request {
 	constructor(body: IncomingMessage, init: RequestInit) {
 		this.body = body;
 		this.method = init.method;
-		this.headers = new Headers(init.headers);
+		this.headers = new Headers(init.headers as HeadersInit);
 		// Parse the URL pathname. Host doesn't matter.
 		this.url = new URL(init.path, 'http://bare-server-node');
 	}
@@ -54,7 +53,7 @@ export class Response {
 			this.statusText = init.statusText;
 		}
 
-		this.headers = new Headers(init.headers);
+		this.headers = new Headers(init.headers as HeadersInit);
 	}
 }
 

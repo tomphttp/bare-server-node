@@ -1,4 +1,3 @@
-import { Headers } from 'headers-polyfill';
 import type WebSocket from 'ws';
 import type { MessageEvent } from 'ws';
 import type { Request } from './AbstractMessage.js';

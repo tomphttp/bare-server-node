@@ -43,7 +43,6 @@
 		"async-exit-hook": "^2.0.1",
 		"commander": "^10.0.1",
 		"dotenv": "^16.0.3",
-		"headers-polyfill": "^3.1.2",
 		"http-errors": "^2.0.0",
 		"ipaddr.js": "^2.0.1",
 		"source-map-support": "^0.5.21",
