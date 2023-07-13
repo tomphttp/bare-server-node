@@ -138,11 +138,11 @@ export type SocketRouteCallback = (
 ) => Promise<void> | void;
 
 export default class Server extends EventEmitter {
+	directory: string;
 	routes = new Map<string, RouteCallback>();
 	socketRoutes = new Map<string, SocketRouteCallback>();
 	versions: string[] = [];
 	private closed = false;
-	private directory: string;
 	private options: Options;
 	/**
 	 * @internal
