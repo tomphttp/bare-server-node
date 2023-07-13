@@ -86,7 +86,7 @@ function readHeaders(request: Request): BareHeaderData {
 	const forwardHeaders = [...defaultForwardHeaders];
 
 	// should be unique
-	const cache = request.url.searchParams.has('cache');
+	const cache = new URL(request.url).searchParams.has('cache');
 
 	if (cache) {
 		passHeaders.push(...defaultCachePassHeaders);

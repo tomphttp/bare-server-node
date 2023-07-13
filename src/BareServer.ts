@@ -13,7 +13,6 @@ import createHttpError from 'http-errors';
 import type WebSocket from 'ws';
 import { Request, Response, writeResponse } from './AbstractMessage.js';
 import type { JSONDatabaseAdapter } from './Meta.js';
-import type { BareHeaders } from './requestUtil.js';
 
 export interface BareErrorBody {
 	code: string;
@@ -177,13 +176,15 @@ export default class Server extends EventEmitter {
 		};
 	}
 	async routeUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer) {
-		const request = new Request(req, {
-			method: req.method!,
-			path: req.url!,
-			headers: <BareHeaders>req.headers,
+		const request = new Request(new URL(req.url!, 'http://bare-server-node'), {
+			method: req.method,
+			body: req,
+			headers: req.headers as HeadersInit,
 		});
 
-		const service = request.url.pathname.slice(this.directory.length - 1);
+		const service = new URL(request.url).pathname.slice(
+			this.directory.length - 1
+		);
 
 		if (this.socketRoutes.has(service)) {
 			const call = this.socketRoutes.get(service)!;
@@ -202,13 +203,15 @@ export default class Server extends EventEmitter {
 		}
 	}
 	async routeRequest(req: IncomingMessage, res: ServerResponse) {
-		const request = new Request(req, {
-			method: req.method!,
-			path: req.url!,
-			headers: <BareHeaders>req.headers,
+		const request = new Request(new URL(req.url!, 'http://bare-server-node'), {
+			method: req.method,
+			body: req,
+			headers: req.headers as HeadersInit,
 		});
 
-		const service = request.url.pathname.slice(this.directory.length - 1);
+		const service = new URL(request.url).pathname.slice(
+			this.directory.length - 1
+		);
 		let response: Response;
 
 		try {
@@ -253,7 +256,7 @@ export default class Server extends EventEmitter {
 					console.error(
 						'Cannot',
 						request.method,
-						request.url.pathname,
+						new URL(request.url).pathname,
 						': Route did not return a response.'
 					);
 				}

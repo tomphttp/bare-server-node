@@ -3,9 +3,9 @@ import { Stream } from 'node:stream';
 import type { BareHeaders } from './requestUtil.js';
 
 export interface RequestInit {
-	method: string;
-	path: string;
-	headers: Headers | BareHeaders;
+	method?: string;
+	headers: HeadersInit;
+	body: IncomingMessage;
 }
 
 /**
@@ -15,13 +15,12 @@ export class Request {
 	body: IncomingMessage;
 	method: string;
 	headers: Headers;
-	url: URL;
-	constructor(body: IncomingMessage, init: RequestInit) {
-		this.body = body;
-		this.method = init.method;
+	url: string;
+	constructor(url: URL | string, init: RequestInit) {
+		this.body = init.body;
+		this.method = init.method || 'GET';
 		this.headers = new Headers(init.headers as HeadersInit);
-		// Parse the URL pathname. Host doesn't matter.
-		this.url = new URL(init.path, 'http://bare-server-node');
+		this.url = url.toString();
 	}
 }
 
