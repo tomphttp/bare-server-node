@@ -15,10 +15,10 @@ import type { BareRemote } from './remoteUtil.js';
 import { remoteToURL } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
 import {
-	fetch,
+	bareFetch,
+	bareUpgradeFetch,
 	nullBodyStatus,
 	randomHex,
-	upgradeFetch,
 } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
 
@@ -280,7 +280,7 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 
 	loadForwardedHeaders(forwardHeaders, sendHeaders, request);
 
-	const response = await fetch(
+	const response = await bareFetch(
 		request,
 		abort.signal,
 		sendHeaders,
@@ -423,7 +423,7 @@ const tunnelSocket: SocketRouteCallback = async (
 		request
 	);
 
-	const [remoteResponse, remoteSocket] = await upgradeFetch(
+	const [remoteResponse, remoteSocket] = await bareUpgradeFetch(
 		request,
 		abort.signal,
 		meta.value.sendHeaders,

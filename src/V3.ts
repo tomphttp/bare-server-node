@@ -15,7 +15,7 @@ import {
 } from './headerUtil.js';
 import { remoteToURL, urlToRemote } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
-import { fetch, nullBodyStatus, webSocketFetch } from './requestUtil.js';
+import { bareFetch, nullBodyStatus, webSocketFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
 import type { SocketClientToServer, SocketServerToClient } from './V3Types.js';
 
@@ -244,7 +244,7 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 
 	loadForwardedHeaders(forwardHeaders, sendHeaders, request);
 
-	const response = await fetch(
+	const response = await bareFetch(
 		request,
 		abort.signal,
 		sendHeaders,

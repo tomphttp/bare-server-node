@@ -54,7 +54,7 @@ function outgoingError<T>(error: T): T | BareError {
 	return error;
 }
 
-export async function fetch(
+export async function bareFetch(
 	request: BareRequest,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
@@ -109,7 +109,7 @@ export async function fetch(
 	});
 }
 
-export async function upgradeFetch(
+export async function bareUpgradeFetch(
 	request: BareRequest,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,

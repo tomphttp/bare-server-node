@@ -15,7 +15,7 @@ import {
 import type { BareRemote } from './remoteUtil.js';
 import { remoteToURL } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
-import { fetch, randomHex, upgradeFetch } from './requestUtil.js';
+import { bareFetch, bareUpgradeFetch, randomHex } from './requestUtil.js';
 import type { BareV1Meta, BareV1MetaRes } from './V1Types.js';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
@@ -166,7 +166,13 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 
 	const { remote, headers } = readHeaders(request);
 
-	const response = await fetch(request, abort.signal, headers, remote, options);
+	const response = await bareFetch(
+		request,
+		abort.signal,
+		headers,
+		remote,
+		options
+	);
 
 	const responseHeaders = new Headers();
 
@@ -284,7 +290,7 @@ const tunnelSocket: SocketRouteCallback = async (
 
 	loadForwardedHeaders(forwardHeaders, headers, request);
 
-	const [remoteResponse, remoteSocket] = await upgradeFetch(
+	const [remoteResponse, remoteSocket] = await bareUpgradeFetch(
 		request,
 		abort.signal,
 		headers,
