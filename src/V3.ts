@@ -1,8 +1,11 @@
+import { Readable } from 'node:stream';
 import type WebSocket from 'ws';
 import type { MessageEvent } from 'ws';
-import type { Request } from './AbstractMessage.js';
-import { Response } from './AbstractMessage.js';
-import type { RouteCallback, SocketRouteCallback } from './BareServer.js';
+import type {
+	BareRequest,
+	RouteCallback,
+	SocketRouteCallback,
+} from './BareServer.js';
 import { BareError } from './BareServer.js';
 import type Server from './BareServer.js';
 import {
@@ -12,7 +15,7 @@ import {
 } from './headerUtil.js';
 import { remoteToURL, urlToRemote } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
-import { fetch, webSocketFetch } from './requestUtil.js';
+import { fetch, nullBodyStatus, webSocketFetch } from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
 import type { SocketClientToServer, SocketServerToClient } from './V3Types.js';
 
@@ -60,7 +63,7 @@ const cacheNotModified = 304;
 function loadForwardedHeaders(
 	forward: string[],
 	target: BareHeaders,
-	request: Request
+	request: BareRequest
 ) {
 	for (const header of forward) {
 		if (request.headers.has(header)) {
@@ -79,7 +82,7 @@ interface BareHeaderData {
 	forwardHeaders: string[];
 }
 
-function readHeaders(request: Request): BareHeaderData {
+function readHeaders(request: BareRequest): BareHeaderData {
 	const sendHeaders: BareHeaders = Object.create(null);
 	const passHeaders = [...defaultPassHeaders];
 	const passStatus = [];
@@ -228,8 +231,8 @@ function readHeaders(request: Request): BareHeaderData {
 const tunnelRequest: RouteCallback = async (request, res, options) => {
 	const abort = new AbortController();
 
-	request.body.on('close', () => {
-		if (!request.body.complete) abort.abort();
+	request.native.on('close', () => {
+		if (!request.native.complete) abort.abort();
 	});
 
 	res.on('close', () => {
@@ -273,10 +276,13 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 		);
 	}
 
-	return new Response(response, {
-		status,
-		headers: splitHeaders(responseHeaders),
-	});
+	return new Response(
+		nullBodyStatus.includes(status) ? undefined : Readable.toWeb(response),
+		{
+			status,
+			headers: splitHeaders(responseHeaders),
+		}
+	);
 };
 
 function readSocket(socket: WebSocket): Promise<SocketClientToServer> {
@@ -322,7 +328,7 @@ const tunnelSocket: SocketRouteCallback = async (
 	head,
 	options
 ) =>
-	options.wss.handleUpgrade(request.body, socket, head, async (client) => {
+	options.wss.handleUpgrade(request.native, socket, head, async (client) => {
 		let _remoteSocket: WebSocket | undefined;
 
 		try {

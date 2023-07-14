@@ -8,11 +8,16 @@ import type {
 } from 'node:http';
 import type { Agent as HttpsAgent } from 'node:https';
 import { join } from 'node:path';
-import type { Duplex } from 'node:stream';
+import { Readable, type Duplex } from 'node:stream';
+import type { ReadableStream } from 'node:stream/web';
 import createHttpError from 'http-errors';
 import type WebSocket from 'ws';
-import { Request, Response, writeResponse } from './AbstractMessage.js';
 import type { JSONDatabaseAdapter } from './Meta.js';
+import { nullMethod } from './requestUtil.js';
+
+export interface BareRequest extends Request {
+	native: IncomingMessage;
+}
 
 export interface BareErrorBody {
 	code: string;
@@ -124,13 +129,13 @@ export interface Options {
 }
 
 export type RouteCallback = (
-	request: Request,
+	request: BareRequest,
 	response: ServerResponse<IncomingMessage>,
 	options: Options
 ) => Promise<Response> | Response;
 
 export type SocketRouteCallback = (
-	request: Request,
+	request: BareRequest,
 	socket: Duplex,
 	head: Buffer,
 	options: Options
@@ -178,9 +183,11 @@ export default class Server extends EventEmitter {
 	async routeUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer) {
 		const request = new Request(new URL(req.url!, 'http://bare-server-node'), {
 			method: req.method,
-			body: req,
+			body: nullMethod.includes(req.method || '') ? undefined : req,
 			headers: req.headers as HeadersInit,
-		});
+		}) as BareRequest;
+
+		request.native = req;
 
 		const service = new URL(request.url).pathname.slice(
 			this.directory.length - 1
@@ -205,9 +212,11 @@ export default class Server extends EventEmitter {
 	async routeRequest(req: IncomingMessage, res: ServerResponse) {
 		const request = new Request(new URL(req.url!, 'http://bare-server-node'), {
 			method: req.method,
-			body: req,
+			body: nullMethod.includes(req.method || '') ? undefined : req,
 			headers: req.headers as HeadersInit,
-		});
+		}) as BareRequest;
+
+		request.native = req;
 
 		const service = new URL(request.url).pathname.slice(
 			this.directory.length - 1
@@ -274,6 +283,16 @@ export default class Server extends EventEmitter {
 		// instead, fetch preflight every 10 minutes
 		response.headers.set('access-control-max-age', '7200');
 
-		writeResponse(response, res);
+		res.writeHead(
+			response.status,
+			response.statusText,
+			Object.fromEntries(response.headers)
+		);
+
+		if (response.body) {
+			const body = Readable.fromWeb(response.body as ReadableStream);
+			body.pipe(res);
+			res.on('close', () => body.destroy());
+		} else res.end();
 	}
 }

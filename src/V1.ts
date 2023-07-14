@@ -1,6 +1,9 @@
-import type { Request } from './AbstractMessage.js';
-import { Response } from './AbstractMessage.js';
-import type { RouteCallback, SocketRouteCallback } from './BareServer.js';
+import { Readable } from 'node:stream';
+import type {
+	BareRequest,
+	RouteCallback,
+	SocketRouteCallback,
+} from './BareServer.js';
 import type Server from './BareServer.js';
 import { BareError, json } from './BareServer.js';
 import { decodeProtocol } from './encodeProtocol.js';
@@ -20,7 +23,7 @@ const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 function loadForwardedHeaders(
 	forward: string[],
 	target: BareHeaders,
-	request: Request
+	request: BareRequest
 ) {
 	for (const header of forward) {
 		const value = request.headers.get(header);
@@ -33,7 +36,7 @@ interface BareHeaderData {
 	headers: BareHeaders;
 }
 
-function readHeaders(request: Request): BareHeaderData {
+function readHeaders(request: BareRequest): BareHeaderData {
 	const remote: Partial<BareRemote> & { [key: string]: string | number } =
 		Object.create(null);
 	const headers: BareHeaders = Object.create(null);
@@ -153,8 +156,8 @@ function readHeaders(request: Request): BareHeaderData {
 const tunnelRequest: RouteCallback = async (request, res, options) => {
 	const abort = new AbortController();
 
-	request.body.on('close', () => {
-		if (!request.body.complete) abort.abort();
+	request.native.on('close', () => {
+		if (!request.native.complete) abort.abort();
 	});
 
 	res.on('close', () => {
@@ -192,7 +195,10 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 	responseHeaders.set('x-bare-status', response.statusCode!.toString());
 	responseHeaders.set('x-bare-status-text', response.statusMessage!);
 
-	return new Response(response, { status: 200, headers: responseHeaders });
+	return new Response(Readable.toWeb(response), {
+		status: 200,
+		headers: responseHeaders,
+	});
 };
 
 const metaExpiration = 30e3;
@@ -247,8 +253,8 @@ const tunnelSocket: SocketRouteCallback = async (
 ) => {
 	const abort = new AbortController();
 
-	request.body.on('close', () => {
-		if (!request.body.complete) abort.abort();
+	request.native.on('close', () => {
+		if (!request.native.complete) abort.abort();
 	});
 
 	socket.on('close', () => {

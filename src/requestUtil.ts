@@ -2,14 +2,16 @@ import { getRandomValues } from 'node:crypto';
 import type { ClientRequest, IncomingMessage, RequestOptions } from 'node:http';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import type { Duplex } from 'node:stream';
+import { Readable, type Duplex } from 'node:stream';
 import type { ErrorEvent } from 'ws';
 import WebSocket from 'ws';
-import type { Request } from './AbstractMessage.js';
 import { BareError } from './BareServer.js';
-import type { Options } from './BareServer.js';
+import type { BareRequest, Options } from './BareServer.js';
 
 export type BareHeaders = Record<string, string | string[]>;
+
+export const nullMethod = ['GET', 'HEAD'];
+export const nullBodyStatus = [101, 204, 205, 304];
 
 export function randomHex(byteLength: number) {
 	const bytes = new Uint8Array(byteLength);
@@ -53,7 +55,7 @@ function outgoingError<T>(error: T): T | BareError {
 }
 
 export async function fetch(
-	request: Request,
+	request: BareRequest,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
 	remote: URL,
@@ -88,7 +90,8 @@ export async function fetch(
 		});
 	else throw new RangeError(`Unsupported protocol: '${remote.protocol}'`);
 
-	request.body.pipe(outgoing);
+	if (request.body) Readable.fromWeb(request.body).pipe(outgoing);
+	else outgoing.end();
 
 	return await new Promise((resolve, reject) => {
 		outgoing.on('response', (response: IncomingMessage) => {
@@ -107,7 +110,7 @@ export async function fetch(
 }
 
 export async function upgradeFetch(
-	request: Request,
+	request: BareRequest,
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
 	remote: URL,
@@ -164,7 +167,7 @@ export async function upgradeFetch(
 }
 
 export async function webSocketFetch(
-	request: Request,
+	request: BareRequest,
 	requestHeaders: BareHeaders,
 	remote: URL,
 	protocols: string[],

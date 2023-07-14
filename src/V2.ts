@@ -1,6 +1,9 @@
-import type { Request } from './AbstractMessage.js';
-import { Response } from './AbstractMessage.js';
-import type { RouteCallback, SocketRouteCallback } from './BareServer.js';
+import { Readable } from 'node:stream';
+import type {
+	BareRequest,
+	RouteCallback,
+	SocketRouteCallback,
+} from './BareServer.js';
 import { BareError } from './BareServer.js';
 import type Server from './BareServer.js';
 import {
@@ -11,7 +14,12 @@ import {
 import type { BareRemote } from './remoteUtil.js';
 import { remoteToURL } from './remoteUtil.js';
 import type { BareHeaders } from './requestUtil.js';
-import { fetch, randomHex, upgradeFetch } from './requestUtil.js';
+import {
+	fetch,
+	nullBodyStatus,
+	randomHex,
+	upgradeFetch,
+} from './requestUtil.js';
 import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
@@ -66,7 +74,7 @@ const cacheNotModified = 304;
 function loadForwardedHeaders(
 	forward: string[],
 	target: BareHeaders,
-	request: Request
+	request: BareRequest
 ) {
 	for (const header of forward) {
 		if (request.headers.has(header)) {
@@ -85,7 +93,7 @@ interface BareHeaderData {
 	forwardHeaders: string[];
 }
 
-function readHeaders(request: Request): BareHeaderData {
+function readHeaders(request: BareRequest): BareHeaderData {
 	const remote: Partial<BareRemote> & { [key: string]: string | number } =
 		Object.create(null);
 	const sendHeaders: BareHeaders = Object.create(null);
@@ -259,8 +267,8 @@ function readHeaders(request: Request): BareHeaderData {
 const tunnelRequest: RouteCallback = async (request, res, options) => {
 	const abort = new AbortController();
 
-	request.body.on('close', () => {
-		if (!request.body.complete) abort.abort();
+	request.native.on('close', () => {
+		if (!request.native.complete) abort.abort();
 	});
 
 	res.on('close', () => {
@@ -304,10 +312,13 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 		);
 	}
 
-	return new Response(response, {
-		status,
-		headers: splitHeaders(responseHeaders),
-	});
+	return new Response(
+		nullBodyStatus.includes(status) ? undefined : Readable.toWeb(response),
+		{
+			status,
+			headers: splitHeaders(responseHeaders),
+		}
+	);
 };
 
 const metaExpiration = 30e3;
@@ -385,8 +396,8 @@ const tunnelSocket: SocketRouteCallback = async (
 ) => {
 	const abort = new AbortController();
 
-	request.body.on('close', () => {
-		if (!request.body.complete) abort.abort();
+	request.native.on('close', () => {
+		if (!request.native.complete) abort.abort();
 	});
 
 	socket.on('close', () => {
@@ -444,7 +455,7 @@ const tunnelSocket: SocketRouteCallback = async (
 		remoteSocket.end();
 	});
 
-	const remoteHeaders = new Headers(<HeadersInit>remoteResponse.headers);
+	const remoteHeaders = new Headers(remoteResponse.headers as HeadersInit);
 
 	meta.value.response = {
 		headers: mapHeadersFromArray(rawHeaderNames(remoteResponse.rawHeaders), {
