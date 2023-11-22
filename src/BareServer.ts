@@ -12,6 +12,7 @@ import { Readable, type Duplex } from 'node:stream';
 import type { ReadableStream } from 'node:stream/web';
 import createHttpError from 'http-errors';
 import type WebSocket from 'ws';
+// @internal
 import type { JSONDatabaseAdapter } from './Meta.js';
 import { nullMethod } from './requestUtil.js';
 
