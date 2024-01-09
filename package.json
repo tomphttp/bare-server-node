@@ -37,7 +37,8 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"dev": "tsc --watch"
+		"dev": "tsc --watch",
+		"start": "sudo npx bare-server-node"
 	},
 	"dependencies": {
 		"async-exit-hook": "^2.0.1",
