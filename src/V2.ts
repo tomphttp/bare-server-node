@@ -41,7 +41,6 @@ const forbiddenForwardHeaders: string[] = [
 const forbiddenPassHeaders: string[] = [
 	'vary',
 	'connection',
-	'set-cookie',
 	'transfer-encoding',
 	'access-control-allow-headers',
 	'access-control-allow-methods',
