@@ -4,8 +4,7 @@
 	"version": "2.0.1",
 	"homepage": "https://github.com/tomphttp",
 	"bugs": {
-		"url": "https://github.com/tomphttp/bare-server-node/issues",
-		"email": "tomp@sys32.dev"
+		"url": "https://github.com/tomphttp/bare-server-node/issues"
 	},
 	"repository": {
 		"type": "git",
@@ -13,7 +12,6 @@
 	},
 	"author": {
 		"name": "TOMP Development",
-		"email": "tomp@sys32.dev",
 		"url": "https://github.com/tomphttp"
 	},
 	"keywords": [
