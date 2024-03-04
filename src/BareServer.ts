@@ -215,6 +215,7 @@ export default class Server extends EventEmitter {
 			method: req.method,
 			body: nullMethod.includes(req.method || '') ? undefined : req,
 			headers: req.headers as HeadersInit,
+			duplex: 'half',
 		}) as BareRequest;
 
 		request.native = req;
