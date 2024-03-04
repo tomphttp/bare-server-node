@@ -18,6 +18,20 @@ import type { BareHeaders } from './requestUtil.js';
 import { bareFetch, bareUpgradeFetch, randomHex } from './requestUtil.js';
 import type { BareV1Meta, BareV1MetaRes } from './V1Types.js';
 
+const forbiddenSendHeaders = [
+	'connection',
+	'content-length',
+	'transfer-encoding',
+];
+
+const forbiddenForwardHeaders: string[] = [
+	'connection',
+	'transfer-encoding',
+	'host',
+	'origin',
+	'referer',
+];
+
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 
 function loadForwardedHeaders(
@@ -89,6 +103,8 @@ function readHeaders(request: BareRequest): BareHeaderData {
 		const json = JSON.parse(xBareHeaders) as Record<string, string | string[]>;
 
 		for (const header in json) {
+			if (forbiddenSendHeaders.includes(header.toLowerCase())) continue;
+
 			const value = json[header];
 
 			if (typeof value === 'string') {
@@ -139,7 +155,24 @@ function readHeaders(request: BareRequest): BareHeaderData {
 		});
 
 	try {
-		loadForwardedHeaders(JSON.parse(xBareForwardHeaders), headers, request);
+		const parsed = JSON.parse(xBareForwardHeaders);
+		const forwardHeaders: string[] = [];
+
+		for (let header of parsed) {
+			header = header.toLowerCase();
+
+			if (forbiddenForwardHeaders.includes(header)) {
+				throw new BareError(400, {
+					code: 'FORBIDDEN_BARE_HEADER',
+					id: `request.headers.x-bare-forward-headers`,
+					message: `A forbidden header was forwarded.`,
+				});
+			} else {
+				forwardHeaders.push(header);
+			}
+		}
+
+		loadForwardedHeaders(forwardHeaders, headers, request);
 	} catch (error) {
 		throw new BareError(400, {
 			code: 'INVALID_BARE_HEADER',

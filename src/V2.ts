@@ -24,11 +24,16 @@ import { joinHeaders, splitHeaders } from './splitHeaderUtil.js';
 
 const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 
+const forbiddenSendHeaders = [
+	'connection',
+	'content-length',
+	'transfer-encoding',
+];
+
 const forbiddenForwardHeaders: string[] = [
 	'connection',
 	'transfer-encoding',
 	'host',
-	'connection',
 	'origin',
 	'referer',
 ];
@@ -36,6 +41,7 @@ const forbiddenForwardHeaders: string[] = [
 const forbiddenPassHeaders: string[] = [
 	'vary',
 	'connection',
+	'set-cookie',
 	'transfer-encoding',
 	'access-control-allow-headers',
 	'access-control-allow-methods',
@@ -160,6 +166,8 @@ function readHeaders(request: BareRequest): BareHeaderData {
 		const json = JSON.parse(xBareHeaders) as Record<string, string | string[]>;
 
 		for (const header in json) {
+			if (forbiddenSendHeaders.includes(header.toLowerCase())) continue;
+
 			const value = json[header];
 
 			if (typeof value === 'string') {
