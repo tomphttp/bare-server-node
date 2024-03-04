@@ -44,7 +44,7 @@
 		"commander": "^10.0.1",
 		"dotenv": "^16.0.3",
 		"http-errors": "^2.0.0",
-		"ipaddr.js": "^2.0.1",
+		"ipaddr.js": "^2.0.0",
 		"source-map-support": "^0.5.21",
 		"ws": "^8.13.0"
 	},
