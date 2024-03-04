@@ -11,7 +11,7 @@ export interface BareRemote {
 
 export function remoteToURL(remote: BareRemote) {
 	return new URL(
-		`${remote.protocol}${remote.host}:${remote.port}${remote.path}`
+		`${remote.protocol}${remote.host}:${remote.port}${remote.path}`,
 	);
 }
 

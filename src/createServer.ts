@@ -94,7 +94,7 @@ export function createBareServer(directory: string, init: BareServerInit = {}) {
 				if (
 					address &&
 					toAddressArray(address, family).some(
-						({ address }) => parse(address).range() !== 'unicast'
+						({ address }) => parse(address).range() !== 'unicast',
 					)
 				)
 					callback(new RangeError('Forbidden IP'), '', -1);

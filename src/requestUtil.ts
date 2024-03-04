@@ -59,7 +59,7 @@ export async function bareFetch(
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
 	remote: URL,
-	options: Options
+	options: Options,
 ): Promise<IncomingMessage> {
 	if (options.filterRemote) await options.filterRemote(remote);
 
@@ -114,7 +114,7 @@ export async function bareUpgradeFetch(
 	signal: AbortSignal,
 	requestHeaders: BareHeaders,
 	remote: URL,
-	options: Options
+	options: Options,
 ): Promise<[res: IncomingMessage, socket: Duplex, head: Buffer]> {
 	if (options.filterRemote) await options.filterRemote(remote);
 
@@ -171,7 +171,7 @@ export async function webSocketFetch(
 	requestHeaders: BareHeaders,
 	remote: URL,
 	protocols: string[],
-	options: Options
+	options: Options,
 ): Promise<[req: IncomingMessage, socket: WebSocket]> {
 	if (options.filterRemote) await options.filterRemote(remote);
 

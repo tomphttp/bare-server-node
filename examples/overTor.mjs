@@ -4,7 +4,7 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 
 // TOR daemon listens on port 9050 by default
 const socksProxyAgent = new SocksProxyAgent(
-	`socks://127.0.0.1:${process.env.TOR_PORT || '9050'}`
+	`socks://127.0.0.1:${process.env.TOR_PORT || '9050'}`,
 );
 
 const httpServer = http.createServer();

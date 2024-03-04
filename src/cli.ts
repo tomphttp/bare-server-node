@@ -25,13 +25,13 @@ program
 			if (isNaN(valN)) throw new Error('Bad port');
 			return valN;
 		},
-		process.env.PORT ? Number(process.env.PORT) : 80
+		process.env.PORT ? Number(process.env.PORT) : 80,
 	)
 	.option('-e, --errors', 'Error logging', 'ERRORS' in process.env)
 	.option(
 		'-la, --local-address <address>',
 		'Address/network interface',
-		process.env.LOCAL_ADDRESS
+		process.env.LOCAL_ADDRESS,
 	)
 	.option<number>(
 		'-f, --family <0|4|6>',
@@ -41,19 +41,19 @@ program
 			if (isNaN(valN)) throw new Error('Bad family');
 			return valN;
 		},
-		process.env.IP_FAMILY ? Number(process.env.IP_FAMILY) : 0
+		process.env.IP_FAMILY ? Number(process.env.IP_FAMILY) : 0,
 	)
 	.option(
 		'-nbl, --no-block-local',
-		'When set, local IP addresses/DNS records are NOT blocked.'
+		'When set, local IP addresses/DNS records are NOT blocked.',
 	)
 	.option(
 		'-m, --maintainer <{email?:string,website?:string}>',
-		'Inline maintainer data'
+		'Inline maintainer data',
 	)
 	.option(
 		'-mf, --maintainer-file <string>',
-		'Path to a file containing the maintainer data'
+		'Path to a file containing the maintainer data',
 	)
 	.action(
 		async ({
@@ -85,8 +85,8 @@ program
 				maintainer: maintainer
 					? JSON.parse(maintainer)
 					: maintainerFile
-					? JSON.parse(await readFile(maintainerFile, 'utf-8'))
-					: undefined,
+						? JSON.parse(await readFile(maintainerFile, 'utf-8'))
+						: undefined,
 			};
 			const bareServer = createBareServer(directory, config);
 
@@ -95,7 +95,7 @@ program
 				'URL:          ',
 				`http://${host === '0.0.0.0' ? 'localhost' : host}${
 					port === 80 ? '' : `:${port}`
-				}${directory}`
+				}${directory}`,
 			);
 			console.log('Maintainer:   ', config.maintainer);
 
@@ -127,7 +127,7 @@ program
 				bareServer.close();
 				server.close();
 			});
-		}
+		},
 	);
 
 program.parse(process.argv);

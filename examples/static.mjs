@@ -21,7 +21,7 @@ const serve = serveStatic(
 	fileURLToPath(new URL('../public/', import.meta.url)),
 	{
 		fallthrough: false,
-	}
+	},
 );
 
 httpServer.on('request', (req, res) => {

@@ -37,7 +37,7 @@ const validProtocols: string[] = ['http:', 'https:', 'ws:', 'wss:'];
 function loadForwardedHeaders(
 	forward: string[],
 	target: BareHeaders,
-	request: BareRequest
+	request: BareRequest,
 ) {
 	for (const header of forward) {
 		const value = request.headers.get(header);
@@ -204,7 +204,7 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 		abort.signal,
 		headers,
 		remote,
-		options
+		options,
 	);
 
 	const responseHeaders = new Headers();
@@ -213,12 +213,12 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 		if (header === 'content-encoding' || header === 'x-content-encoding')
 			responseHeaders.set(
 				'content-encoding',
-				flattenHeader(response.headers[header]!)
+				flattenHeader(response.headers[header]!),
 			);
 		else if (header === 'content-length')
 			responseHeaders.set(
 				'content-length',
-				flattenHeader(response.headers[header]!)
+				flattenHeader(response.headers[header]!),
 			);
 	}
 
@@ -227,8 +227,8 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 		JSON.stringify(
 			mapHeadersFromArray(rawHeaderNames(response.rawHeaders), {
 				...(<BareHeaders>response.headers),
-			})
-		)
+			}),
+		),
 	);
 
 	responseHeaders.set('x-bare-status', response.statusCode!.toString());
@@ -288,7 +288,7 @@ const tunnelSocket: SocketRouteCallback = async (
 	request,
 	socket,
 	head,
-	options
+	options,
 ) => {
 	const abort = new AbortController();
 
@@ -328,7 +328,7 @@ const tunnelSocket: SocketRouteCallback = async (
 		abort.signal,
 		headers,
 		remoteToURL(remote),
-		options
+		options,
 	);
 
 	remoteSocket.on('close', () => {
@@ -364,7 +364,7 @@ const tunnelSocket: SocketRouteCallback = async (
 					rawHeaderNames(remoteResponse.rawHeaders),
 					{
 						...(<BareHeaders>remoteResponse.headers),
-					}
+					},
 				),
 			};
 			await options.database.set(id, meta);
@@ -381,7 +381,7 @@ const tunnelSocket: SocketRouteCallback = async (
 
 	if ('sec-websocket-extensions' in remoteResponse.headers) {
 		responseHeaders.push(
-			`Sec-WebSocket-Extensions: ${remoteResponse.headers['sec-websocket-extensions']}`
+			`Sec-WebSocket-Extensions: ${remoteResponse.headers['sec-websocket-extensions']}`,
 		);
 	}
 
