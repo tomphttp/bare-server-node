@@ -27,7 +27,6 @@ const forbiddenSendHeaders = [
 const forbiddenForwardHeaders: string[] = [
 	'connection',
 	'transfer-encoding',
-	'host',
 	'origin',
 	'referer',
 ];
@@ -161,15 +160,9 @@ function readHeaders(request: BareRequest): BareHeaderData {
 		for (let header of parsed) {
 			header = header.toLowerCase();
 
-			if (forbiddenForwardHeaders.includes(header)) {
-				throw new BareError(400, {
-					code: 'FORBIDDEN_BARE_HEADER',
-					id: `request.headers.x-bare-forward-headers`,
-					message: `A forbidden header was forwarded.`,
-				});
-			} else {
-				forwardHeaders.push(header);
-			}
+			// just ignore
+			if (forbiddenForwardHeaders.includes(header)) continue;
+			forwardHeaders.push(header);
 		}
 
 		loadForwardedHeaders(forwardHeaders, headers, request);
