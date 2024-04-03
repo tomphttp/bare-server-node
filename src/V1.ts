@@ -213,6 +213,11 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 				'content-length',
 				flattenHeader(response.headers[header]!),
 			);
+		else if (header === 'cache-control')
+		    responseHeaders.set(
+				'cache-control',
+				flattenHeader(response.headers[header]!),
+			)
 	}
 
 	responseHeaders.set(

@@ -46,7 +46,7 @@ const forbiddenPassHeaders: string[] = [
 ];
 
 // common defaults
-const defaultForwardHeaders: string[] = ['accept-encoding', 'accept-language'];
+const defaultForwardHeaders: string[] = ['accept-encoding', 'accept-language', 'cache-control'];
 
 const defaultPassHeaders: string[] = [
 	'content-encoding',
