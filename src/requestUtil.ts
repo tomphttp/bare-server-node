@@ -21,38 +21,49 @@ export function randomHex(byteLength: number) {
 	return hex;
 }
 
-function outgoingError<T>(error: T): T | BareError {
-	if (error instanceof Error) {
-		switch ((<Error & { code?: string }>error).code) {
-			case 'ENOTFOUND':
-				return new BareError(500, {
-					code: 'HOST_NOT_FOUND',
-					id: 'request',
-					message: 'The specified host could not be resolved.',
-				});
-			case 'ECONNREFUSED':
-				return new BareError(500, {
-					code: 'CONNECTION_REFUSED',
-					id: 'response',
-					message: 'The remote rejected the request.',
-				});
-			case 'ECONNRESET':
-				return new BareError(500, {
-					code: 'CONNECTION_RESET',
-					id: 'response',
-					message: 'The request was forcibly closed.',
-				});
-			case 'ETIMEOUT':
-				return new BareError(500, {
-					code: 'CONNECTION_TIMEOUT',
-					id: 'response',
-					message: 'The response timed out.',
-				});
+async function outgoingError<T>(error: T): Promise<T | BareError> {
+	return new Promise((resolve, reject) => {
+		setTimeout(() => { // Simulating asynchronous operation
+			if (error instanceof Error) {
+				switch ((<Error & { code?: string }>error).code) {
+					case 'ENOTFOUND':
+						resolve(new BareError(500, {
+							code: 'HOST_NOT_FOUND',
+							id: 'request',
+							message: 'The specified host could not be resolved.',
+						}));
+						break;
+					case 'ECONNREFUSED':
+						resolve(new BareError(500, {
+							code: 'CONNECTION_REFUSED',
+							id: 'response',
+							message: 'The remote rejected the request.',
+						}));
+						break;
+					case 'ECONNRESET':
+						resolve(new BareError(500, {
+							code: 'CONNECTION_RESET',
+							id: 'response',
+							message: 'The request was forcibly closed.',
+						}));
+						break;
+					case 'ETIMEOUT':
+						resolve(new BareError(500, {
+							code: 'CONNECTION_TIMEOUT',
+							id: 'response',
+							message: 'The response timed out.',
+						}));
+						break;
+					default:
+						resolve(error);
+						break;
+				}
+		} else {
+			resolve(error);
 		}
-	}
-
-	return error;
-}
+		}, 0);
+	});
+  }
 
 export async function bareFetch(
 	request: BareRequest,

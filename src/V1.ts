@@ -182,11 +182,11 @@ function readHeaders(request: BareRequest): BareHeaderData {
 const tunnelRequest: RouteCallback = async (request, res, options) => {
 	const abort = new AbortController();
 
-	request.native.on('abort', () => {
+	request.native.on('close', () => {
 		if (!request.native.complete) abort.abort();
 	});
 
-	res.on('abort', () => {
+	res.on('close', () => {
 		abort.abort();
 	});
 
@@ -214,7 +214,7 @@ const tunnelRequest: RouteCallback = async (request, res, options) => {
 				flattenHeader(response.headers[header]!),
 			);
 		else if (header === 'cache-control')
-		    responseHeaders.set(
+			responseHeaders.set(
 				'cache-control',
 				flattenHeader(response.headers[header]!),
 			)
