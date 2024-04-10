@@ -182,11 +182,11 @@ function readHeaders(request: BareRequest): BareHeaderData {
 const tunnelRequest: RouteCallback = async (request, res, options) => {
 	const abort = new AbortController();
 
-	request.native.on('close', () => {
+	request.native.on('abort', () => {
 		if (!request.native.complete) abort.abort();
 	});
 
-	res.on('close', () => {
+	res.on('abort', () => {
 		abort.abort();
 	});
 
