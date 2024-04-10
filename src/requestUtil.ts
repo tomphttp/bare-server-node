@@ -104,8 +104,7 @@ export async function bareFetch(
 		});
 
 		outgoing.on('error', (error: Error) => {
-			// Reject only with the original error, not another error
-			reject(error);
+			reject(outgoingError(error));
 		});
 	});
 }
