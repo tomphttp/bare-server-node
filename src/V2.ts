@@ -57,6 +57,7 @@ const defaultForwardHeaders: string[] = [
 	'sec-websocket-extensions',
 	'sec-websocket-key',
 	'sec-websocket-version',
+	'cache-control',
 ];
 
 const defaultPassHeaders: string[] = [
