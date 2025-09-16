@@ -4,7 +4,11 @@ import { Agent as HttpsAgent } from 'node:https';
 import { isValid, parse } from 'ipaddr.js';
 import { WebSocketServer } from 'ws';
 import BareServer from './BareServer.js';
-import type { BareMaintainer, Options } from './BareServer.js';
+import type {
+	BareMaintainer,
+	Options,
+	ConnectionLimiterOptions,
+} from './BareServer.js';
 import type { Database } from './Meta.js';
 import { cleanupDatabase, JSONDatabaseAdapter } from './Meta.js';
 import registerV1 from './V1.js';
@@ -44,6 +48,11 @@ export interface BareServerInit {
 	 */
 	legacySupport?: boolean;
 	database?: Database;
+	/**
+	 * Connection limiting options to prevent resource exhaustion attacks.
+	 * @default { maxConnectionsPerIP: 10, windowDuration: 60, blockDuration: 60 }
+	 */
+	connectionLimiter?: ConnectionLimiterOptions;
 }
 
 export interface Address {
@@ -123,6 +132,14 @@ export function createBareServer(directory: string, init: BareServerInit = {}) {
 		const interval = setInterval(() => cleanupDatabase(database), 1000);
 		init.database = database;
 		cleanup.push(() => clearInterval(interval));
+	}
+
+	if (!init.connectionLimiter) {
+		init.connectionLimiter = {
+			maxConnectionsPerIP: 10,
+			windowDuration: 60,
+			blockDuration: 60,
+		};
 	}
 
 	const server = new BareServer(directory, {

@@ -12,6 +12,7 @@ import { Readable, type Duplex } from 'node:stream';
 import type { ReadableStream } from 'node:stream/web';
 import createHttpError from 'http-errors';
 import type WebSocket from 'ws';
+import { type RateLimiterRes, RateLimiterMemory } from 'rate-limiter-flexible';
 // @internal
 import type { JSONDatabaseAdapter } from './Meta.js';
 import { nullMethod } from './requestUtil.js';
@@ -25,6 +26,37 @@ export interface BareErrorBody {
 	id: string;
 	message?: string;
 	stack?: string;
+}
+
+/**
+ * Result of a rate limiting check.
+ */
+export interface RateLimitResult {
+	/** Whether the request is allowed. */
+	allowed: boolean;
+	/** Rate limiter response containing timing and quota information. */
+	rateLimiterRes?: RateLimiterRes;
+}
+
+/**
+ * Connection limiting options to prevent resource exhaustion attacks.
+ */
+export interface ConnectionLimiterOptions {
+	/**
+	 * Maximum number of keep-alive connections per IP address.
+	 * @default 10
+	 */
+	maxConnectionsPerIP?: number;
+	/**
+	 * Duration in seconds for the rate limit cooldown time window.
+	 * @default 60
+	 */
+	windowDuration?: number;
+	/**
+	 * Block duration in seconds for during rate limit cooldown.
+	 * @default 60
+	 */
+	blockDuration?: number;
 }
 
 export class BareError extends Error {
@@ -48,7 +80,7 @@ const project: BareProject = {
 	version: pkg.version,
 };
 
-export function json<T>(status: number, json: T) {
+export function json<T>(status: number, json: T): globalThis.Response {
 	const send = Buffer.from(JSON.stringify(json, null, '\t'));
 
 	return new Response(send, {
@@ -127,6 +159,10 @@ export interface Options {
 	httpsAgent: HttpsAgent;
 	database: JSONDatabaseAdapter;
 	wss: WebSocket.Server;
+	/**
+	 * Connection limiting options to prevent resource exhaustion attacks.
+	 */
+	connectionLimiter?: ConnectionLimiterOptions;
 }
 
 export type RouteCallback = (
@@ -149,6 +185,7 @@ export default class Server extends EventEmitter {
 	versions: string[] = [];
 	private closed = false;
 	private options: Options;
+	private rateLimiter?: RateLimiterMemory;
 	/**
 	 * @internal
 	 */
@@ -156,6 +193,75 @@ export default class Server extends EventEmitter {
 		super();
 		this.directory = directory;
 		this.options = options;
+
+		if (options.connectionLimiter) {
+			const maxConnections =
+				options.connectionLimiter.maxConnectionsPerIP ?? 10;
+			const duration = options.connectionLimiter.windowDuration ?? 60;
+			const blockDuration = options.connectionLimiter.blockDuration ?? 60;
+
+			this.rateLimiter = new RateLimiterMemory({
+				points: maxConnections,
+				duration,
+				blockDuration,
+			});
+		}
+	}
+
+	/**
+	 * Extracts client IP address from incoming request.
+	 * Checks headers in order of preference: `x-forwarded-for`, `x-real-ip`, then socket address.
+	 * @param req HTTP request to extract IP from.
+	 * @return Client IP address as string, or `'unknown'` if not determinable.
+	 */
+	private getClientIP(req: IncomingMessage): string {
+		const forwarded = req.headers['x-forwarded-for'] as string;
+		if (forwarded) {
+			return forwarded.split(',')[0].trim();
+		}
+
+		const realIP = req.headers['x-real-ip'] as string;
+		if (realIP) {
+			return realIP;
+		}
+
+		return req.socket.remoteAddress || 'unknown';
+	}
+
+	/**
+	 * Checks if request should be rate limited based on connection type and IP to prevent resource exhaustion.
+	 * @param req HTTP request to check.
+	 * @return Promise resolving to rate limit result with allowed status and limiter response.
+	 */
+	private async checkRateLimit(req: IncomingMessage): Promise<RateLimitResult> {
+		if (!this.rateLimiter) {
+			return { allowed: true };
+		}
+
+		const ip = this.getClientIP(req);
+
+		try {
+			const connection = req.headers.connection?.toLowerCase();
+			const keepAlive =
+				connection === 'keep-alive' ||
+				(req.httpVersion === '1.1' && connection !== 'close');
+
+			if (keepAlive) {
+				const rateLimiterRes = await this.rateLimiter.consume(ip);
+				return { allowed: true, rateLimiterRes };
+			} else {
+				const rateLimiterRes = await this.rateLimiter.get(ip);
+				if (rateLimiterRes && rateLimiterRes.remainingPoints <= 0) {
+					return { allowed: false, rateLimiterRes };
+				}
+				return { allowed: true };
+			}
+		} catch (rateLimiterRes) {
+			return {
+				allowed: false,
+				rateLimiterRes: rateLimiterRes as RateLimiterRes,
+			};
+		}
 	}
 	/**
 	 * Remove all timers and listeners
@@ -182,6 +288,36 @@ export default class Server extends EventEmitter {
 		};
 	}
 	async routeUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer) {
+		const rateResult = await this.checkRateLimit(req);
+		if (!rateResult.allowed) {
+			const retryAfter = rateResult.rateLimiterRes
+				? Math.round(rateResult.rateLimiterRes.msBeforeNext / 1000) || 1
+				: 60;
+			const maxConnections =
+				this.options.connectionLimiter?.maxConnectionsPerIP ?? 10;
+
+			socket.write(
+				'HTTP/1.1 429 Too Many Connections\r\n' +
+					'Content-Type: application/json\r\n' +
+					`Retry-After: ${retryAfter}\r\n` +
+					`RateLimit-Limit: ${maxConnections}\r\n` +
+					`RateLimit-Remaining: ${rateResult.rateLimiterRes?.remainingPoints ?? 0}\r\n` +
+					`RateLimit-Reset: ${
+						rateResult.rateLimiterRes
+							? Math.ceil(rateResult.rateLimiterRes.msBeforeNext / 1000)
+							: 60
+					}\r\n` +
+					'\r\n' +
+					JSON.stringify({
+						code: 'CONNECTION_LIMIT_EXCEEDED',
+						id: 'error.TooManyConnections',
+						message: 'Too many keep-alive connections from this IP address',
+					}),
+			);
+			socket.end();
+			return;
+		}
+
 		const request = new Request(new URL(req.url!, 'http://bare-server-node'), {
 			method: req.method,
 			body: nullMethod.includes(req.method || '') ? undefined : req,
@@ -211,6 +347,36 @@ export default class Server extends EventEmitter {
 		}
 	}
 	async routeRequest(req: IncomingMessage, res: ServerResponse) {
+		const rateResult = await this.checkRateLimit(req);
+		if (!rateResult.allowed) {
+			const retryAfter = rateResult.rateLimiterRes
+				? Math.round(rateResult.rateLimiterRes.msBeforeNext / 1000) || 1
+				: 60;
+			const maxConnections =
+				this.options.connectionLimiter?.maxConnectionsPerIP ?? 10;
+
+			res.writeHead(429, 'Too Many Connections', {
+				'Content-Type': 'application/json',
+				'Retry-After': retryAfter.toString(),
+				'RateLimit-Limit': maxConnections.toString(),
+				'RateLimit-Remaining': (
+					rateResult.rateLimiterRes?.remainingPoints ?? 0
+				).toString(),
+				'RateLimit-Reset': (rateResult.rateLimiterRes
+					? Math.ceil(rateResult.rateLimiterRes.msBeforeNext / 1000)
+					: 60
+				).toString(),
+			});
+			res.end(
+				JSON.stringify({
+					code: 'CONNECTION_LIMIT_EXCEEDED',
+					id: 'error.TooManyConnections',
+					message: 'Too many keep-alive connections from this IP address',
+				}),
+			);
+			return;
+		}
+
 		const request = new Request(new URL(req.url!, 'http://bare-server-node'), {
 			method: req.method,
 			body: nullMethod.includes(req.method || '') ? undefined : req,
